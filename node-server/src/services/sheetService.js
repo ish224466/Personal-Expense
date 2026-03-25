@@ -54,3 +54,44 @@ export async function addExpense(amount, dateStr) {
 
   return "Updated successfully";
 }
+
+export async function getMonthlyExpenses() {
+  const sheets = await getSheetsClient();
+
+  const today = new Date();
+  const month = today.toLocaleString("default", { month: "long" });
+  const year = today.getFullYear();
+
+  const sheetName = `${month}/${year}`;
+
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `${sheetName}!A:C`,
+  });
+
+  const rows = res.data.values;
+
+  if (!rows) throw new Error("No data");
+
+  let expenses = [];
+  let total = 0;
+
+  // skip header rows (assumes row 1-2 headers)
+  for (let i = 2; i < rows.length; i++) {
+    const row = rows[i];
+
+    if (!row || !row[0]) continue;
+
+    const date = row[0];
+    const expense = parseInt(row[1] || 0);
+
+    total += expense;
+
+    expenses.push({ date, expense });
+  }
+
+  return {
+    total,
+    expenses
+  };
+}

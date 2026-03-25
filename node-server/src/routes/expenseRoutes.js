@@ -23,4 +23,15 @@ router.post("/add-expense", async (req, res) => {
   }
 });
 
+import { getMonthlyExpenses } from "../services/sheetService.js";
+
+router.get("/month-expenses", async (req, res) => {
+  try {
+    const data = await getMonthlyExpenses();
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 export default router;
