@@ -21,13 +21,11 @@ export async function addExpense(amount, dateStr) {
     range: `${sheetName}!A:C`,
   });
 
-  const rows = res.data.values;
+  const rows = res.data.values || [];
 
-  if (!rows) throw new Error("Sheet not found");
-
-  // 2. Find row
   let rowIndex = -1;
 
+  // 2. Find row
   for (let i = 0; i < rows.length; i++) {
     if (rows[i][0] === formattedDate) {
       rowIndex = i + 1;
@@ -35,24 +33,37 @@ export async function addExpense(amount, dateStr) {
     }
   }
 
-  if (rowIndex === -1) throw new Error("Date row not found");
+  // ✅ CASE 1: Row exists → update
+  if (rowIndex !== -1) {
+    const row = rows[rowIndex - 1];
 
-  const row = rows[rowIndex - 1];
+    let expense = parseInt(row[1] || 0);
+    expense += amount;
 
-  let expense = parseInt(row[1] || 0);
-  expense += amount;
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: SPREADSHEET_ID,
+      range: `${sheetName}!B${rowIndex}`,
+      valueInputOption: "RAW",
+      requestBody: {
+        values: [[expense]],
+      },
+    });
 
-  // 3. Update ONLY column B (important)
-  await sheets.spreadsheets.values.update({
+    return "Updated existing date";
+  }
+
+  // ✅ CASE 2: Row does NOT exist → create new row
+  await sheets.spreadsheets.values.append({
     spreadsheetId: SPREADSHEET_ID,
-    range: `${sheetName}!B${rowIndex}`,
+    range: `${sheetName}!A:C`,
     valueInputOption: "RAW",
+    insertDataOption: "INSERT_ROWS",
     requestBody: {
-      values: [[expense]],
+      values: [[formattedDate, amount, ""]],
     },
   });
 
-  return "Updated successfully";
+  return "Created new date entry";
 }
 
 export async function getMonthlyExpenses() {
