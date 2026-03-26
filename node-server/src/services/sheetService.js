@@ -59,7 +59,7 @@ export async function addExpense(amount, dateStr) {
     valueInputOption: "RAW",
     insertDataOption: "INSERT_ROWS",
     requestBody: {
-      values: [[formattedDate, amount, ""]],
+      values: [[formattedDate, amount]],
     },
   });
 
