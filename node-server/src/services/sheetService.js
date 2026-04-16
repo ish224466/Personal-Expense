@@ -7,7 +7,29 @@ const SPREADSHEET_ID = process.env.SPREADSHEET_ID;
 export async function addExpense(amount, dateStr) {
   const sheets = await getSheetsClient();
 
-  const date = new Date(dateStr);
+  // Parse YYYY-MM-DD as a local calendar date to avoid timezone shifts.
+  let date;
+  const ymdMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr);
+
+  if (ymdMatch) {
+    const year = Number(ymdMatch[1]);
+    const monthIndex = Number(ymdMatch[2]) - 1;
+    const day = Number(ymdMatch[3]);
+    date = new Date(year, monthIndex, day);
+
+    if (
+      date.getFullYear() !== year ||
+      date.getMonth() !== monthIndex ||
+      date.getDate() !== day
+    ) {
+      throw new Error("Invalid date");
+    }
+  } else {
+    date = new Date(dateStr);
+    if (Number.isNaN(date.getTime())) {
+      throw new Error("Invalid date");
+    }
+  }
 
   const month = date.toLocaleString("default", { month: "long" });
   const year = date.getFullYear();
