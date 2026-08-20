@@ -20,10 +20,6 @@ export const EXPENSE_CATEGORIES = [
 const HEADER_ROW = ["Date", ...EXPENSE_CATEGORIES, "Total"];
 const SUMMARY_ROW_LABEL = "Total";
 
-function quoteSheetName(sheetName) {
-  return `'${sheetName.replace(/'/g, "''")}'`;
-}
-
 function getColumnLetter(index) {
   let result = "";
   let value = index;
@@ -82,18 +78,50 @@ function isNewStructure(rows) {
   return HEADER_ROW.every((value, index) => headerRow[index] === value);
 }
 
+async function ensureMonthlySheetExists(sheets, sheetName) {
+  const spreadsheet = await sheets.spreadsheets.get({
+    spreadsheetId: SPREADSHEET_ID,
+  });
+
+  const existingSheet = spreadsheet.data.sheets?.find(
+    (sheet) => sheet.properties?.title === sheetName,
+  );
+
+  if (existingSheet) {
+    return;
+  }
+
+  await sheets.spreadsheets.batchUpdate({
+    spreadsheetId: SPREADSHEET_ID,
+    requestBody: {
+      requests: [
+        {
+          addSheet: {
+            properties: {
+              title: sheetName,
+              gridProperties: {
+                rowCount: 200,
+                columnCount: HEADER_ROW.length,
+              },
+            },
+          },
+        },
+      ],
+    },
+  });
+}
+
 async function writeNewStructure(sheets, sheetName, dataRows) {
   const lastColumn = getColumnLetter(HEADER_ROW.length);
-  const quotedSheetName = quoteSheetName(sheetName);
 
   await sheets.spreadsheets.values.clear({
     spreadsheetId: SPREADSHEET_ID,
-    range: `${quotedSheetName}!A:${lastColumn}`,
+    range: `${sheetName}!A:${lastColumn}`,
   });
 
   await sheets.spreadsheets.values.update({
     spreadsheetId: SPREADSHEET_ID,
-    range: `${quotedSheetName}!A1`,
+    range: `${sheetName}!A1`,
     valueInputOption: "USER_ENTERED",
     requestBody: {
       values: [buildSummaryRow(), HEADER_ROW, ...dataRows],
@@ -103,11 +131,25 @@ async function writeNewStructure(sheets, sheetName, dataRows) {
 
 async function ensureSheetStructure(sheets, sheetName) {
   const lastColumn = getColumnLetter(HEADER_ROW.length);
-  const quotedSheetName = quoteSheetName(sheetName);
-  const res = await sheets.spreadsheets.values.get({
-    spreadsheetId: SPREADSHEET_ID,
-    range: `${quotedSheetName}!A1:${lastColumn}`,
-  });
+  await ensureMonthlySheetExists(sheets, sheetName);
+
+  let res;
+  try {
+    res = await sheets.spreadsheets.values.get({
+      spreadsheetId: SPREADSHEET_ID,
+      range: `${sheetName}!A1:${lastColumn}`,
+    });
+  } catch (error) {
+    if (String(error?.message || "").includes("Unable to parse range")) {
+      await ensureMonthlySheetExists(sheets, sheetName);
+      res = await sheets.spreadsheets.values.get({
+        spreadsheetId: SPREADSHEET_ID,
+        range: `${sheetName}!A1:${lastColumn}`,
+      });
+    } else {
+      throw error;
+    }
+  }
 
   const rows = res.data.values || [];
 
@@ -186,7 +228,7 @@ export async function addExpense(amount, dateStr, category) {
 
     await sheets.spreadsheets.values.update({
       spreadsheetId: SPREADSHEET_ID,
-      range: `${quoteSheetName(sheetName)}!A${rowIndex}:${getColumnLetter(HEADER_ROW.length)}${rowIndex}`,
+      range: `${sheetName}!A${rowIndex}:${getColumnLetter(HEADER_ROW.length)}${rowIndex}`,
       valueInputOption: "USER_ENTERED",
       requestBody: {
         values: [row],
@@ -208,7 +250,7 @@ export async function addExpense(amount, dateStr, category) {
 
   await sheets.spreadsheets.values.append({
     spreadsheetId: SPREADSHEET_ID,
-    range: `${quoteSheetName(sheetName)}!A:${getColumnLetter(HEADER_ROW.length)}`,
+    range: `${sheetName}!A:${getColumnLetter(HEADER_ROW.length)}`,
     valueInputOption: "USER_ENTERED",
     insertDataOption: "INSERT_ROWS",
     requestBody: {
@@ -227,7 +269,6 @@ export async function getMonthlyExpenses() {
   const year = today.getFullYear();
 
   const sheetName = `${month}/${year}`;
-  const quotedSheetName = quoteSheetName(sheetName);
 
   const rows = await ensureSheetStructure(sheets, sheetName);
 
