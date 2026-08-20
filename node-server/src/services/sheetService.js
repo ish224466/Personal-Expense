@@ -20,6 +20,10 @@ export const EXPENSE_CATEGORIES = [
 const HEADER_ROW = ["Date", ...EXPENSE_CATEGORIES, "Total"];
 const SUMMARY_ROW_LABEL = "Total";
 
+function quoteSheetName(sheetName) {
+  return `'${sheetName.replace(/'/g, "''")}'`;
+}
+
 function getColumnLetter(index) {
   let result = "";
   let value = index;
@@ -80,15 +84,16 @@ function isNewStructure(rows) {
 
 async function writeNewStructure(sheets, sheetName, dataRows) {
   const lastColumn = getColumnLetter(HEADER_ROW.length);
+  const quotedSheetName = quoteSheetName(sheetName);
 
   await sheets.spreadsheets.values.clear({
     spreadsheetId: SPREADSHEET_ID,
-    range: `${sheetName}!A:${lastColumn}`,
+    range: `${quotedSheetName}!A:${lastColumn}`,
   });
 
   await sheets.spreadsheets.values.update({
     spreadsheetId: SPREADSHEET_ID,
-    range: `${sheetName}!A1`,
+    range: `${quotedSheetName}!A1`,
     valueInputOption: "USER_ENTERED",
     requestBody: {
       values: [buildSummaryRow(), HEADER_ROW, ...dataRows],
@@ -98,9 +103,10 @@ async function writeNewStructure(sheets, sheetName, dataRows) {
 
 async function ensureSheetStructure(sheets, sheetName) {
   const lastColumn = getColumnLetter(HEADER_ROW.length);
+  const quotedSheetName = quoteSheetName(sheetName);
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: SPREADSHEET_ID,
-    range: `${sheetName}!A1:${lastColumn}`,
+    range: `${quotedSheetName}!A1:${lastColumn}`,
   });
 
   const rows = res.data.values || [];
@@ -180,7 +186,7 @@ export async function addExpense(amount, dateStr, category) {
 
     await sheets.spreadsheets.values.update({
       spreadsheetId: SPREADSHEET_ID,
-      range: `${sheetName}!A${rowIndex}:${getColumnLetter(HEADER_ROW.length)}${rowIndex}`,
+      range: `${quoteSheetName(sheetName)}!A${rowIndex}:${getColumnLetter(HEADER_ROW.length)}${rowIndex}`,
       valueInputOption: "USER_ENTERED",
       requestBody: {
         values: [row],
@@ -202,7 +208,7 @@ export async function addExpense(amount, dateStr, category) {
 
   await sheets.spreadsheets.values.append({
     spreadsheetId: SPREADSHEET_ID,
-    range: `${sheetName}!A:${getColumnLetter(HEADER_ROW.length)}`,
+    range: `${quoteSheetName(sheetName)}!A:${getColumnLetter(HEADER_ROW.length)}`,
     valueInputOption: "USER_ENTERED",
     insertDataOption: "INSERT_ROWS",
     requestBody: {
@@ -221,6 +227,7 @@ export async function getMonthlyExpenses() {
   const year = today.getFullYear();
 
   const sheetName = `${month}/${year}`;
+  const quotedSheetName = quoteSheetName(sheetName);
 
   const rows = await ensureSheetStructure(sheets, sheetName);
 

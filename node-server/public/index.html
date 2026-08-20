@@ -240,14 +240,21 @@ async function addExpense() {
 
 async function loadData() {
   const res = await fetch("/api/month-expenses");
-  const data = await res.json();
+  const data = await res.json().catch(() => ({}));
+
+  if (!res.ok) {
+    document.getElementById("total").innerText = "₹0";
+    document.getElementById("list").innerHTML = "";
+    document.getElementById("msg").innerText = data.error || "Failed to load data";
+    return;
+  }
 
   document.getElementById("total").innerText = "₹" + data.total;
 
   const list = document.getElementById("list");
   list.innerHTML = "";
 
-  data.expenses.slice().reverse().forEach(item => {
+  (data.expenses || []).slice().reverse().forEach(item => {
     const div = document.createElement("div");
     div.className = "item";
 
