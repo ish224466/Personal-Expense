@@ -1,11 +1,11 @@
 import express from "express";
-import { addExpense } from "../services/sheetService.js";
+import { addExpense, EXPENSE_CATEGORIES } from "../services/sheetService.js";
 
 const router = express.Router();
 
 router.post("/add-expense", async (req, res) => {
   try {
-    const { amount, date } = req.body;
+    const { amount, date, category } = req.body;
 
     if (!amount || amount <= 0) {
       return res.status(400).json({ message: "Invalid amount" });
@@ -15,7 +15,11 @@ router.post("/add-expense", async (req, res) => {
       return res.status(400).json({ message: "Date required" });
     }
 
-    const result = await addExpense(amount, date);
+    if (!category || !EXPENSE_CATEGORIES.includes(category)) {
+      return res.status(400).json({ message: "Invalid category" });
+    }
+
+    const result = await addExpense(amount, date, category);
 
     res.json({ message: result });
   } catch (err) {
