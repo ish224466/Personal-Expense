@@ -61,21 +61,35 @@ function parseLocalDate(dateStr) {
   return date;
 }
 
-function buildSummaryRow() {
-  return [
-    SUMMARY_ROW_LABEL,
-    ...EXPENSE_CATEGORIES.map((_, index) => `=SUM(${getColumnLetter(index + 2)}3:${getColumnLetter(index + 2)})`),
-    `=SUM(${getColumnLetter(EXPENSE_CATEGORIES.length + 2)}3:${getColumnLetter(EXPENSE_CATEGORIES.length + 2)})`,
-  ];
+function getDaysInMonth(year, monthIndex) {
+  return new Date(year, monthIndex + 1, 0).getDate();
 }
 
-function isNewStructure(rows) {
-  if (!rows || rows.length < 2) {
-    return false;
+function formatExpenseDate(day, monthIndex, year) {
+  return `${day}/${monthIndex + 1}/${year}`;
+}
+
+function buildEmptyMonthRows(year, monthIndex) {
+  const daysInMonth = getDaysInMonth(year, monthIndex);
+  const rows = [];
+
+  for (let day = 1; day <= daysInMonth; day++) {
+    rows.push([
+      formatExpenseDate(day, monthIndex, year),
+      ...EXPENSE_CATEGORIES.map(() => 0),
+      0,
+    ]);
   }
 
-  const headerRow = rows[1] || [];
-  return HEADER_ROW.every((value, index) => headerRow[index] === value);
+  return rows;
+}
+
+function buildSummaryRow(lastDataRowIndex) {
+  return [
+    SUMMARY_ROW_LABEL,
+    ...EXPENSE_CATEGORIES.map((_, index) => `=SUM(${getColumnLetter(index + 2)}3:${getColumnLetter(index + 2)}${lastDataRowIndex})`),
+    `=SUM(${getColumnLetter(EXPENSE_CATEGORIES.length + 2)}3:${getColumnLetter(EXPENSE_CATEGORIES.length + 2)}${lastDataRowIndex})`,
+  ];
 }
 
 async function ensureMonthlySheetExists(sheets, sheetName) {
@@ -111,8 +125,41 @@ async function ensureMonthlySheetExists(sheets, sheetName) {
   });
 }
 
+function mergeExistingRowsIntoMonthGrid(existingRows, year, monthIndex) {
+  const monthRows = buildEmptyMonthRows(year, monthIndex);
+
+  for (let i = 2; i < existingRows.length; i++) {
+    const row = existingRows[i];
+
+    if (!row || !row[0]) {
+      continue;
+    }
+
+    const day = Number(String(row[0]).split("/")[0]);
+
+    if (!day || day < 1 || day > monthRows.length) {
+      continue;
+    }
+
+    const targetRow = monthRows[day - 1];
+
+    if (row.length >= HEADER_ROW.length) {
+      for (let columnIndex = 1; columnIndex < HEADER_ROW.length; columnIndex++) {
+        targetRow[columnIndex] = Number(row[columnIndex] || 0) || 0;
+      }
+    } else {
+      const legacyAmount = Number(row[1] || 0) || 0;
+      targetRow[EXPENSE_CATEGORIES.length] = legacyAmount;
+      targetRow[EXPENSE_CATEGORIES.length + 1] = legacyAmount;
+    }
+  }
+
+  return monthRows;
+}
+
 async function writeNewStructure(sheets, sheetName, dataRows) {
   const lastColumn = getColumnLetter(HEADER_ROW.length);
+  const lastDataRowIndex = dataRows.length + 2;
 
   await sheets.spreadsheets.values.clear({
     spreadsheetId: SPREADSHEET_ID,
@@ -124,12 +171,12 @@ async function writeNewStructure(sheets, sheetName, dataRows) {
     range: `${sheetName}!A1`,
     valueInputOption: "USER_ENTERED",
     requestBody: {
-      values: [buildSummaryRow(), HEADER_ROW, ...dataRows],
+      values: [buildSummaryRow(lastDataRowIndex), HEADER_ROW, ...dataRows],
     },
   });
 }
 
-async function ensureSheetStructure(sheets, sheetName) {
+async function ensureSheetStructure(sheets, sheetName, year, monthIndex) {
   const lastColumn = getColumnLetter(HEADER_ROW.length);
   await ensureMonthlySheetExists(sheets, sheetName);
 
@@ -153,35 +200,10 @@ async function ensureSheetStructure(sheets, sheetName) {
 
   const rows = res.data.values || [];
 
-  if (!rows.length) {
-    await writeNewStructure(sheets, sheetName, []);
-    return [];
-  }
+  const normalizedRows = mergeExistingRowsIntoMonthGrid(rows, year, monthIndex);
 
-  if (isNewStructure(rows)) {
-    return rows.slice(2);
-  }
-
-  const migratedRows = [];
-
-  for (let i = 2; i < rows.length; i++) {
-    const row = rows[i];
-
-    if (!row || !row[0]) {
-      continue;
-    }
-
-    const legacyAmount = Number(row[1] || 0) || 0;
-    migratedRows.push([
-      row[0],
-      ...EXPENSE_CATEGORIES.slice(0, -1).map(() => 0),
-      legacyAmount,
-      legacyAmount,
-    ]);
-  }
-
-  await writeNewStructure(sheets, sheetName, migratedRows);
-  return migratedRows;
+  await writeNewStructure(sheets, sheetName, normalizedRows);
+  return normalizedRows;
 }
 
 export async function addExpense(amount, dateStr, category) {
@@ -197,68 +219,37 @@ export async function addExpense(amount, dateStr, category) {
   const year = date.getFullYear();
 
   const sheetName = `${month}/${year}`;
-  const formattedDate = `${date.getDate()}/${date.getMonth() + 1}/${year}`;
+  const formattedDate = formatExpenseDate(date.getDate(), date.getMonth(), year);
   const categoryIndex = EXPENSE_CATEGORIES.indexOf(category);
   const categoryColumnIndex = categoryIndex + 2;
   const totalColumnIndex = EXPENSE_CATEGORIES.length + 2;
 
-  const dataRows = await ensureSheetStructure(sheets, sheetName);
-
-  let rowIndex = -1;
-  let currentRows = dataRows;
-
-  for (let i = 0; i < currentRows.length; i++) {
-    if (currentRows[i][0] === formattedDate) {
-      rowIndex = i + 3;
-      break;
-    }
-  }
+  const dataRows = await ensureSheetStructure(sheets, sheetName, year, date.getMonth());
+  const rowIndex = date.getDate() + 2;
+  const currentRows = dataRows;
 
   // CASE 1: Row exists -> update the selected category and total.
-  if (rowIndex !== -1) {
-    const existingRow = currentRows[rowIndex - 3] || [];
-    const row = HEADER_ROW.map((_, index) => existingRow[index] ?? 0);
-    const existingCategoryAmount = Number(row[categoryColumnIndex - 1] || 0) || 0;
-    const existingTotal = Number(row[totalColumnIndex - 1] || 0) || 0;
-    const updatedCategoryAmount = existingCategoryAmount + amount;
-    const updatedTotal = existingTotal + amount;
+  const existingRow = currentRows[date.getDate() - 1] || [];
+  const row = HEADER_ROW.map((_, index) => existingRow[index] ?? 0);
+  const existingCategoryAmount = Number(row[categoryColumnIndex - 1] || 0) || 0;
+  const existingTotal = Number(row[totalColumnIndex - 1] || 0) || 0;
+  const updatedCategoryAmount = existingCategoryAmount + amount;
+  const updatedTotal = existingTotal + amount;
 
-    row[categoryColumnIndex - 1] = updatedCategoryAmount;
-    row[totalColumnIndex - 1] = updatedTotal;
+  row[0] = formattedDate;
+  row[categoryColumnIndex - 1] = updatedCategoryAmount;
+  row[totalColumnIndex - 1] = updatedTotal;
 
-    await sheets.spreadsheets.values.update({
-      spreadsheetId: SPREADSHEET_ID,
-      range: `${sheetName}!A${rowIndex}:${getColumnLetter(HEADER_ROW.length)}${rowIndex}`,
-      valueInputOption: "USER_ENTERED",
-      requestBody: {
-        values: [row],
-      },
-    });
-
-    return "Updated existing date";
-  }
-
-  // CASE 2: Row does NOT exist -> create a new row.
-  const newRow = [
-    formattedDate,
-    ...EXPENSE_CATEGORIES.map(() => 0),
-    0,
-  ];
-
-  newRow[categoryColumnIndex - 1] = amount;
-  newRow[totalColumnIndex - 1] = amount;
-
-  await sheets.spreadsheets.values.append({
+  await sheets.spreadsheets.values.update({
     spreadsheetId: SPREADSHEET_ID,
-    range: `${sheetName}!A:${getColumnLetter(HEADER_ROW.length)}`,
+    range: `${sheetName}!A${rowIndex}:${getColumnLetter(HEADER_ROW.length)}${rowIndex}`,
     valueInputOption: "USER_ENTERED",
-    insertDataOption: "INSERT_ROWS",
     requestBody: {
-      values: [newRow],
+      values: [row],
     },
   });
 
-  return "Created new date entry";
+  return "Updated existing date";
 }
 
 export async function getMonthlyExpenses() {
@@ -270,7 +261,7 @@ export async function getMonthlyExpenses() {
 
   const sheetName = `${month}/${year}`;
 
-  const rows = await ensureSheetStructure(sheets, sheetName);
+  const rows = await ensureSheetStructure(sheets, sheetName, year, today.getMonth());
 
   let expenses = [];
   let total = 0;
@@ -284,6 +275,10 @@ export async function getMonthlyExpenses() {
     const date = row[0];
     const rowCategories = Object.fromEntries(EXPENSE_CATEGORIES.map((name, index) => [name, Number(row[index + 1] || 0) || 0]));
     const expense = Number(row[EXPENSE_CATEGORIES.length + 1] || 0) || 0;
+
+    if (expense === 0 && Object.values(rowCategories).every((value) => value === 0)) {
+      continue;
+    }
 
     total += expense;
     for (const category of EXPENSE_CATEGORIES) {
