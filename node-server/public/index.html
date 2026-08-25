@@ -1,268 +1,761 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Expense Tracker</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Expense Tracker</title>
+  <style>
+    :root {
+      --bg: #07111f;
+      --bg-2: #0d1b2a;
+      --card: rgba(15, 23, 42, 0.9);
+      --card-soft: rgba(30, 41, 59, 0.9);
+      --panel: #111827;
+      --line: rgba(148, 163, 184, 0.16);
+      --text: #e5eefb;
+      --muted: #9aa8bf;
+      --primary: #4ade80;
+      --primary-strong: #22c55e;
+      --accent: #38bdf8;
+      --danger: #f87171;
+      --shadow: 0 18px 36px rgba(2, 6, 23, 0.45);
+      --radius: 20px;
+    }
 
-<style>
-:root {
-  --primary: #4CAF50;
-  --bg: #0f172a;
-  --card: #111827;
-  --text: #e5e7eb;
-  --muted: #9ca3af;
-  --accent: #22c55e;
-}
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
 
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto;
-}
+    body {
+      min-height: 100vh;
+      background: linear-gradient(180deg, var(--bg) 0%, var(--bg-2) 100%);
+      color: var(--text);
+      display: flex;
+      justify-content: center;
+      padding: 20px 14px 48px;
+    }
 
-body {
-  background: linear-gradient(180deg, #0f172a, #020617);
-  color: var(--text);
-  min-height: 100vh;
-  display: flex;
-  justify-content: center;
-}
+    .container {
+      width: 100%;
+      max-width: 480px;
+    }
 
-.container {
-  width: 100%;
-  max-width: 420px;
-  padding: 16px;
-}
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 18px;
+      margin-bottom: 18px;
+    }
 
-.card {
-  background: var(--card);
-  border-radius: 18px;
-  padding: 18px;
-  margin-bottom: 16px;
-  box-shadow: 0 8px 25px rgba(0,0,0,0.4);
-}
+    .header-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 8px;
+      position: relative;
+      min-height: 36px;
+    }
 
-.header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 10px;
-}
+    h2 {
+      font-size: 1.05rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      white-space: nowrap;
+      margin: 0;
+      flex: 0 0 auto;
+    }
 
-h2 {
-  font-size: 18px;
-}
+    .subtle-btn {
+      border: 1px solid rgba(148,163,184,0.06);
+      background: linear-gradient(180deg, rgba(74,222,128,0.08), rgba(56,189,248,0.06));
+      color: var(--primary-strong);
+      font-weight: 700;
+      cursor: pointer;
+      font-size: 0.82rem;
+      padding: 6px 10px;
+      border-radius: 10px;
+      box-shadow: 0 6px 14px rgba(2,6,23,0.36);
+      margin-left: 0;
+      display: inline-block;
+      min-width: 88px;
+      text-align: center;
+    }
 
-.refresh {
-  font-size: 14px;
-  color: var(--accent);
-  cursor: pointer;
-}
+    .subtle-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 28px rgba(2,6,23,0.55);
+    }
 
-.total {
-  font-size: 28px;
-  font-weight: bold;
-  margin-top: 10px;
-  color: var(--accent);
-}
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 12px;
+    }
 
-input {
-  width: 100%;
-  padding: 14px;
-  border-radius: 12px;
-  border: none;
-  margin-top: 10px;
-  background: #1f2937;
-  color: white;
-  font-size: 16px;
-}
+    .metric {
+      background: var(--card-soft);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 10px 8px;
+      text-align: center;
+    }
 
-select {
-  width: 100%;
-  padding: 14px;
-  border-radius: 12px;
-  border: none;
-  margin-top: 10px;
-  background: #1f2937;
-  color: white;
-  font-size: 16px;
-}
+    .metric-label {
+      color: var(--muted);
+      font-size: 0.72rem;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
 
-button {
-  width: 100%;
-  padding: 14px;
-  border-radius: 12px;
-  border: none;
-  margin-top: 12px;
-  background: var(--primary);
-  color: white;
-  font-weight: 600;
-  cursor: pointer;
-  transition: 0.2s;
-}
+    .metric-value {
+      font-size: 1.05rem;
+      font-weight: 800;
+      color: var(--text);
+    }
 
-button:active {
-  transform: scale(0.97);
-}
+    .total {
+      font-size: 2rem;
+      font-weight: 800;
+      color: var(--primary);
+      letter-spacing: -0.04em;
+      margin: 4px 0 6px 0;
+    }
 
-.list {
-  max-height: 320px;
-  overflow-y: auto;
-  margin-top: 10px;
-}
+    .month-label {
+      color: var(--muted);
+      font-size: 0.8rem;
+    }
 
-.item {
-  display: flex;
-  justify-content: space-between;
-  padding: 12px;
-  border-radius: 10px;
-  margin-bottom: 8px;
-  background: #1f2937;
-  transition: 0.2s;
-}
+    label {
+      display: block;
+      margin-top: 12px;
+      margin-bottom: 6px;
+      font-size: 0.75rem;
+      color: var(--muted);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
 
-.item:hover {
-  background: #374151;
-}
+    input, select, button {
+      width: 100%;
+      border: 1px solid var(--line);
+      background: rgba(17, 24, 39, 0.9);
+      color: var(--text);
+      border-radius: 12px;
+      padding: 13px 14px;
+      font-size: 1rem;
+      outline: none;
+    }
 
-.date {
-  color: var(--muted);
-  font-size: 14px;
-}
+    input:focus, select:focus {
+      border-color: rgba(74, 222, 128, 0.7);
+      box-shadow: 0 0 0 3px rgba(74, 222, 128, 0.15);
+    }
 
-.expense {
-  font-weight: bold;
-  font-size: 15px;
-}
+    button {
+      margin-top: 14px;
+      cursor: pointer;
+      font-weight: 700;
+      border: none;
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-strong) 100%);
+      color: #05250d;
+      transition: transform 0.15s ease;
+    }
 
-.msg {
-  margin-top: 10px;
-  font-size: 13px;
-}
+    button:active {
+      transform: scale(0.98);
+    }
 
-@media (max-width: 480px) {
-  .container {
-    padding: 12px;
-  }
-}
-</style>
+    .msg {
+      min-height: 22px;
+      margin-top: 10px;
+      color: var(--primary);
+      font-size: 0.87rem;
+      font-weight: 600;
+    }
+
+    .chart-wrap {
+      margin-top: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .chart-shell {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 14px;
+      background: linear-gradient(180deg, rgba(15,23,42,0.75), rgba(7,16,28,0.6));
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      position: relative;
+    }
+
+    canvas {
+      width: 240px;
+      height: 240px;
+      display: block;
+      cursor: pointer;
+    }
+
+    .chart-tooltip {
+      position: absolute;
+      pointer-events: none;
+      background: rgba(2,6,23,0.9);
+      color: var(--text);
+      padding: 8px 10px;
+      border-radius: 10px;
+      font-weight: 700;
+      font-size: 0.86rem;
+      border: 1px solid rgba(148,163,184,0.06);
+      transform: translate(-50%, -120%);
+      white-space: nowrap;
+      box-shadow: 0 8px 20px rgba(2,6,23,0.6);
+      display: none;
+      z-index: 20;
+    }
+
+    .category-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 8px;
+    }
+
+    .category-row {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 8px 10px;
+      background: rgba(15, 23, 42, 0.75);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+    }
+
+    .category-top {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.82rem;
+      color: var(--text);
+      gap: 8px;
+    }
+
+    .bar {
+      width: 100%;
+      height: 8px;
+      background: rgba(148, 163, 184, 0.18);
+      border-radius: 99px;
+      overflow: hidden;
+    }
+
+    .bar-fill {
+      display: block;
+      height: 100%;
+      border-radius: 99px;
+      background: linear-gradient(90deg, var(--accent), var(--primary));
+    }
+
+    .list {
+      max-height: 280px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 10px;
+      padding-right: 4px;
+    }
+
+    .item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      background: rgba(15, 23, 42, 0.73);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 10px 12px;
+    }
+
+    .entry-date {
+      font-size: 0.77rem;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+
+    .entry-meta {
+      font-size: 0.72rem;
+      color: var(--muted);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 220px;
+    }
+
+    .expense {
+      font-weight: 700;
+      color: var(--primary);
+      white-space: nowrap;
+    }
+
+    .empty-state {
+      padding: 12px;
+      text-align: center;
+      color: var(--muted);
+      border: 1px dashed var(--line);
+      border-radius: 12px;
+    }
+
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: rgba(148, 163, 184, 0.3);
+      border-radius: 999px;
+    }
+
+    @media (max-width: 420px) {
+      .summary-grid {
+        grid-template-columns: 1fr;
+      }
+      .header-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+      }
+      .subtle-btn {
+        margin-left: 0;
+        align-self: stretch;
+        position: static;
+      }
+    }
+  </style>
 </head>
-
 <body>
-
-<div class="container">
-
-  <!-- Add Expense -->
-  <div class="card">
-    <h2>Add Expense</h2>
-    <input type="number" id="amount" placeholder="Enter amount ₹"/>
-    <select id="category"></select>
-    <input type="date" id="expenseDate"/>
-    <button onclick="addExpense()">Add Expense</button>
-    <div class="msg" id="msg"></div>
-  </div>
-
-  <!-- Monthly Summary -->
-  <div class="card">
-    <div class="header">
-      <h2>This Month</h2>
-      <div class="refresh" onclick="loadData()">⟳ Refresh</div>
+  <div class="container">
+    <div class="card">
+      <div class="header-row">
+        <h2>Add Expense</h2>
+      </div>
+      <label for="amount">Amount</label>
+      <input type="number" id="amount" placeholder="Enter amount ₹" />
+      <label for="category">Category</label>
+      <select id="category"></select>
+      <label for="expenseDate">Date</label>
+      <input type="date" id="expenseDate" />
+      <button id="addBtn" onclick="addExpense()">Add Expense</button>
+      <div class="msg" id="msg"></div>
     </div>
-    <div class="total" id="total">₹0</div>
+
+    <div class="card">
+      <div class="header-row">
+        <h2>This Month</h2>
+      </div>
+      <div class="total" id="total">₹0</div>
+      <div class="month-label" id="monthLabel">Month overview</div>
+
+      <div class="summary-grid">
+        <div class="metric">
+          <div class="metric-label">Entries</div>
+          <div class="metric-value" id="entriesMetric">0</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Largest</div>
+          <div class="metric-value" id="largestMetric">₹0</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Avg/day</div>
+          <div class="metric-value" id="avgMetric">₹0</div>
+        </div>
+      </div>
+
+      <div class="chart-wrap">
+        <div class="chart-shell">
+            <canvas id="expenseChart" width="240" height="240"></canvas>
+            <div class="chart-tooltip" id="chartTooltip"></div>
+        </div>
+        <div class="category-list" id="categoryList"></div>
+      </div>
+      <div style="display:flex; justify-content:flex-end; margin-top:10px;">
+        <button class="subtle-btn" onclick="loadData()">Refresh</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="header-row">
+        <h2>History</h2>
+      </div>
+      <div class="list" id="list"></div>
+    </div>
   </div>
 
-  <!-- Expense List -->
-  <div class="card">
-    <h2>History</h2>
-    <div class="list" id="list"></div>
-  </div>
+  <script>
+    const categories = [
+      "Food",
+      "Commute",
+      "Utilities",
+      "Shopping",
+      "Rent",
+      "Entertainment",
+      "Trip",
+      "Subscription",
+      "Home",
+      "Other"
+    ];
 
-</div>
+    const categoryColors = {
+      Food: "#16a34a",         // green
+      Commute: "#0ea5e9",      // sky
+      Utilities: "#f97316",    // orange
+      Shopping: "#db2777",     // magenta
+      Rent: "#7c3aed",         // purple
+      Entertainment: "#ef4444",// red
+      Trip: "#10b981",         // teal-green
+      Subscription: "#0284c7",// blue
+      Home: "#f59e0b",         // amber
+      Other: "#475569"         // slate (muted)
+    };
 
-<script>
+    const categorySelect = document.getElementById("category");
+    categorySelect.innerHTML = categories
+      .map((category) => `<option value="${category}">${category}</option>`)
+      .join("");
+    categorySelect.value = "Food";
 
-const categories = [
-  "Food",
-  "Commute",
-  "Utilities",
-  "Shopping",
-  "Rent",
-  "Entertainment",
-  "Trip",
-  "Subscription",
-  "Home",
-  "Other"
-];
+    function currency(value) {
+      return `₹${Number(value || 0).toLocaleString("en-IN")}`;
+    }
 
-const categorySelect = document.getElementById("category");
-categorySelect.innerHTML = categories
-  .map((category) => `<option value="${category}">${category}</option>`)
-  .join("");
-categorySelect.value = "Food";
+    function getTodayLocalDate() {
+      const now = new Date();
+      const tzOffsetMs = now.getTimezoneOffset() * 60 * 1000;
+      return new Date(now.getTime() - tzOffsetMs).toISOString().split("T")[0];
+    }
 
-function getTodayLocalDate() {
-  const now = new Date();
-  const tzOffsetMs = now.getTimezoneOffset() * 60 * 1000;
-  return new Date(now.getTime() - tzOffsetMs).toISOString().split("T")[0];
-}
+    document.getElementById("expenseDate").value = getTodayLocalDate();
 
-document.getElementById("expenseDate").value = getTodayLocalDate();
+    function renderSummary(data) {
+      const total = Number(data.total || 0);
+      const entries = Array.isArray(data.expenses) ? data.expenses : [];
+      const categoryTotals = data.categoryTotals || {};
 
-async function addExpense() {
-  const amount = document.getElementById("amount").value;
-  const selectedDate = document.getElementById("expenseDate").value;
-  const category = document.getElementById("category").value;
-  const msg = document.getElementById("msg");
+      document.getElementById("total").innerText = currency(total);
+      document.getElementById("monthLabel").innerText = new Intl.DateTimeFormat("en-US", {
+        month: "long",
+        year: "numeric"
+      }).format(new Date());
 
-  if (!amount || amount <= 0) {
-    msg.innerText = "Enter valid amount";
-    return;
-  }
+      const metricEntries = entries.length;
+      const largest = Object.entries(categoryTotals).reduce((max, [name, value]) => {
+        const current = Number(value || 0);
+        return current > max ? current : max;
+      }, 0);
+      const avg = entries.length ? total / entries.length : 0;
 
-  if (!selectedDate) {
-    msg.innerText = "Select a valid date";
-    return;
-  }
+      document.getElementById("entriesMetric").innerText = metricEntries;
+      document.getElementById("largestMetric").innerText = currency(largest);
+      document.getElementById("avgMetric").innerText = currency(avg);
+    }
 
-  await fetch("/api/add-expense", {
-    method: "POST",
-    headers: {"Content-Type": "application/json"},
-    body: JSON.stringify({ amount: Number(amount), date: selectedDate, category })
-  });
+    function renderCategoryBreakdown(data) {
+      const categoryTotals = data.categoryTotals || {};
+      const entries = Object.entries(categoryTotals)
+        .map(([name, value]) => ({ name, value: Number(value || 0) }))
+        .filter((item) => item.value > 0)
+        .sort((a, b) => b.value - a.value);
 
-  msg.innerText = "Added ✅";
-  document.getElementById("amount").value = "";
-  categorySelect.value = "Food";
+      const container = document.getElementById("categoryList");
+      const total = Number(data.total || 0);
 
-  loadData();
-}
+      if (!entries.length) {
+        container.innerHTML = '<div class="empty-state">No category spending yet this month.</div>';
+        return;
+      }
 
-async function loadData() {
-  const res = await fetch("/api/month-expenses");
-  const data = res.ok ? await res.json() : { total: 0, expenses: [], categoryTotals: {} };
+      const maxValue = entries[0].value;
+      container.innerHTML = entries.map(({ name, value }) => {
+        const percent = total ? (value / total) * 100 : 0;
+        const width = maxValue ? (value / maxValue) * 100 : 0;
+        const color = categoryColors[name] || "#4ade80";
+        return `
+          <div class="category-row">
+            <div class="category-top">
+              <span>${name}</span>
+              <strong>${currency(value)}</strong>
+            </div>
+            <div class="bar">
+              <span class="bar-fill" style="width: ${Math.max(width, 8)}%; background: linear-gradient(90deg, ${color}, #4ade80);"></span>
+            </div>
+            <div class="category-top" style="color: var(--muted); font-size: 0.7rem;">
+              <span>${percent.toFixed(1)}% of total</span>
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
 
-  document.getElementById("total").innerText = "₹" + (data.total || 0);
+    let chartData = null;
+    let chartSlices = [];
+    let hoveredIndex = -1;
+    let chartInitialized = false;
 
-  const list = document.getElementById("list");
-  list.innerHTML = "";
+    function renderPieChart(data) {
+      const canvas = document.getElementById("expenseChart");
+      const ctx = canvas.getContext("2d");
+      const categoryTotals = data.categoryTotals || {};
+      const entries = Object.entries(categoryTotals)
+        .map(([name, value]) => ({ name, value: Number(value || 0) }))
+        .filter((item) => item.value > 0)
+        .sort((a, b) => b.value - a.value);
 
-  (data.expenses || []).slice().reverse().forEach(item => {
-    const div = document.createElement("div");
-    div.className = "item";
+      const total = entries.reduce((sum, item) => sum + item.value, 0);
+      chartData = { entries, total };
+      chartSlices = [];
 
-    div.innerHTML = `
-      <div class="date">${item.date}</div>
-      <div class="expense">₹${item.expense}</div>
-    `;
+      // precompute slice angles
+      let start = -Math.PI / 2;
+      entries.forEach(({ name, value }) => {
+        const slice = (value / total) * Math.PI * 2;
+        const s = start;
+        const e = start + slice;
+        chartSlices.push({ start: s, end: e, name, value, color: categoryColors[name] || "#4ade80", percent: total ? (value / total) * 100 : 0 });
+        start = e;
+      });
 
-    list.appendChild(div);
-  });
-}
+      drawChart();
+      if (!chartInitialized) initChartInteraction();
+    }
 
-loadData();
+    function drawChart() {
+      const canvas = document.getElementById("expenseChart");
+      const ctx = canvas.getContext("2d");
+      const tooltip = document.getElementById("chartTooltip");
+      const width = canvas.width;
+      const height = canvas.height;
+      ctx.clearRect(0, 0, width, height);
 
-</script>
+      if (!chartData || !chartData.entries || !chartData.entries.length) {
+        ctx.beginPath();
+        ctx.arc(width / 2, height / 2, Math.min(width, height) / 2 - 40, 0, Math.PI * 2);
+        ctx.strokeStyle = "rgba(148, 163, 184, 0.16)";
+        ctx.lineWidth = 18;
+        ctx.stroke();
+        tooltip.style.display = 'none';
+        return;
+      }
 
+      const centerX = width / 2;
+      const centerY = height / 2;
+      const outer = Math.min(width, height) / 2 - 20;
+      const ringThickness = 18; // match empty-state stroke thickness
+      const inner = Math.max(outer - ringThickness, 4);
+
+      const hoverGrow = 8;
+      chartSlices.forEach((s, i) => {
+        let r = outer + (i === hoveredIndex ? hoverGrow : 0);
+
+        ctx.beginPath();
+        ctx.moveTo(centerX, centerY);
+        ctx.arc(centerX, centerY, r, s.start, s.end);
+        ctx.closePath();
+        ctx.fillStyle = s.color;
+        ctx.fill();
+        // subtle stroke to separate slices
+        ctx.lineWidth = 1.5;
+        ctx.strokeStyle = 'rgba(2,6,23,0.22)';
+        ctx.stroke();
+      });
+
+      // inner hole
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, inner, 0, Math.PI * 2);
+      ctx.fillStyle = "#0d1b2a";
+      ctx.fill();
+
+      // center text
+      ctx.fillStyle = "#e5eefb";
+      ctx.textAlign = "center";
+      ctx.font = "700 14px sans-serif";
+      ctx.fillText("Total", centerX, centerY - 6);
+      ctx.font = "800 16px sans-serif";
+      ctx.fillText(currency(chartData.total), centerX, centerY + 18);
+
+      // tooltip handling for hovered slice
+      const tooltipEl = document.getElementById('chartTooltip');
+      if (hoveredIndex >= 0 && chartSlices[hoveredIndex]) {
+        const s = chartSlices[hoveredIndex];
+        tooltipEl.style.display = 'block';
+        tooltipEl.innerText = `${s.name} • ${currency(s.value)} • ${s.percent.toFixed(1)}%`;
+      } else {
+        tooltipEl.style.display = 'none';
+      }
+    }
+
+    function initChartInteraction() {
+      chartInitialized = true;
+      const canvas = document.getElementById("expenseChart");
+      const tooltip = document.getElementById("chartTooltip");
+
+      function normalize(a) {
+        const two = Math.PI * 2;
+        while (a < 0) a += two;
+        while (a >= two) a -= two;
+        return a;
+      }
+
+      canvas.addEventListener('mousemove', (ev) => {
+        if (!chartSlices.length) return;
+        const rect = canvas.getBoundingClientRect();
+        const x = ev.clientX - rect.left;
+        const y = ev.clientY - rect.top;
+        const cx = rect.width / 2;
+        const cy = rect.height / 2;
+        const dx = x - cx;
+        const dy = y - cy;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        const angle = Math.atan2(dy, dx);
+        const ang = normalize(angle + Math.PI * 2); // 0..2pi
+
+        const outer = Math.min(rect.width, rect.height) / 2 - 20;
+        const ringThickness = 18;
+        const hoverGrow = 8;
+        const inner = Math.max(outer - ringThickness, 4);
+
+        if (dist < inner || dist > outer + hoverGrow + 4) {
+          if (hoveredIndex !== -1) {
+            hoveredIndex = -1;
+            drawChart();
+          }
+          return;
+        }
+
+        // find slice
+        let found = -1;
+        for (let i = 0; i < chartSlices.length; i++) {
+          const s = chartSlices[i];
+          const startN = normalize(s.start + Math.PI * 2);
+          const endN = normalize(s.end + Math.PI * 2);
+          if (startN < endN) {
+            if (ang >= startN && ang < endN) { found = i; break; }
+          } else {
+            // wrapped around
+            if (ang >= startN || ang < endN) { found = i; break; }
+          }
+        }
+
+        if (found !== hoveredIndex) {
+          hoveredIndex = found;
+          drawChart();
+        }
+
+        if (found >= 0) {
+          tooltip.style.left = `${ev.clientX - rect.left}px`;
+          tooltip.style.top = `${ev.clientY - rect.top}px`;
+          tooltip.style.transform = 'translate(-50%, -120%)';
+        }
+      });
+
+      canvas.addEventListener('mouseleave', () => {
+        hoveredIndex = -1;
+        drawChart();
+      });
+    }
+
+    function renderHistory(data) {
+      const list = document.getElementById("list");
+      const items = Array.isArray(data.expenses) ? data.expenses.slice().reverse() : [];
+
+      if (!items.length) {
+        list.innerHTML = '<div class="empty-state">No expenses logged yet. Add your first one above.</div>';
+        return;
+      }
+
+      list.innerHTML = items.map((item) => {
+        const categorySummary = Object.entries(item.categories || {})
+          .filter(([, value]) => Number(value) > 0)
+          .slice(0, 3)
+          .map(([name, value]) => `${name}: ${currency(value)}`)
+          .join(" • ");
+
+        return `
+          <div class="item">
+            <div>
+              <div class="entry-date">${item.date}</div>
+              <div class="entry-meta">${categorySummary || "No category details"}</div>
+            </div>
+            <div class="expense">${currency(item.expense)}</div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    async function addExpense() {
+      const amountEl = document.getElementById("amount");
+      const amount = amountEl.value;
+      const selectedDate = document.getElementById("expenseDate").value;
+      const category = document.getElementById("category").value;
+      const msg = document.getElementById("msg");
+      const addBtn = document.getElementById("addBtn");
+
+      // clear previous message and show saving state
+      msg.innerText = "";
+
+      if (!amount || amount <= 0) {
+        msg.innerText = "Please enter a valid amount.";
+        return;
+      }
+
+      if (!selectedDate) {
+        msg.innerText = "Please select a date.";
+        return;
+      }
+
+      try {
+        addBtn.disabled = true;
+        msg.innerText = "Saving...";
+
+        const res = await fetch("/api/add-expense", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ amount: Number(amount), date: selectedDate, category })
+        });
+
+        if (!res.ok) throw new Error('save-failed');
+
+        msg.innerText = "Expense added successfully ✅";
+        amountEl.value = "";
+        categorySelect.value = "Food";
+
+        await loadData();
+
+        // keep success message briefly then clear
+        setTimeout(() => { msg.innerText = ""; }, 3000);
+      } catch (error) {
+        msg.innerText = "Something went wrong while saving.";
+      } finally {
+        addBtn.disabled = false;
+      }
+    }
+
+    async function loadData() {
+      const res = await fetch("/api/month-expenses");
+      const data = res.ok ? await res.json() : { total: 0, expenses: [], categoryTotals: {} };
+
+      renderSummary(data);
+      renderCategoryBreakdown(data);
+      renderPieChart(data);
+      renderHistory(data);
+    }
+
+    loadData();
+  </script>
 </body>
 </html>
