@@ -313,6 +313,85 @@
       border-radius: 12px;
     }
 
+    .toolbar {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .toolbar input, .toolbar select {
+      min-width: 0;
+      padding: 10px 11px;
+      font-size: 0.85rem;
+    }
+
+    .trend {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .trend .metric-value { font-size: 0.9rem; }
+    .trend-up { color: var(--danger); }
+    .trend-down { color: var(--primary); }
+
+    .chart-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+      margin-top: 14px;
+    }
+
+    .chart-panel {
+      background: rgba(15, 23, 42, 0.72);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 10px;
+    }
+
+    .chart-panel h3 {
+      color: var(--muted);
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 4px;
+    }
+
+    .bar-chart {
+      width: 100%;
+      height: 150px;
+      display: block;
+    }
+
+    .item {
+      cursor: pointer;
+      align-items: flex-start;
+    }
+
+    .item-main { min-width: 0; flex: 1; }
+
+    .details {
+      display: none;
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 0.75rem;
+      line-height: 1.7;
+    }
+
+    .item.open .details { display: block; }
+
+    .chevron {
+      color: var(--muted);
+      font-size: 0.8rem;
+      transition: transform 0.15s ease;
+    }
+
+    .item.open .chevron { transform: rotate(180deg); }
+
     ::-webkit-scrollbar {
       width: 8px;
     }
@@ -351,13 +430,19 @@
       <select id="category"></select>
       <label for="expenseDate">Date</label>
       <input type="date" id="expenseDate" />
+      <label for="expenseNotes">Notes (private)</label>
+      <input type="text" id="expenseNotes" maxlength="500" placeholder="Optional note" />
       <button id="addBtn" onclick="addExpense()">Add Expense</button>
       <div class="msg" id="msg"></div>
     </div>
 
     <div class="card">
       <div class="header-row">
-        <h2>This Month</h2>
+        <h2>Monthly Expense</h2>
+      </div>
+      <div class="toolbar">
+        <input type="month" id="monthPicker" aria-label="View month" />
+        <button class="subtle-btn" id="monthReset" type="button">Current month</button>
       </div>
       <div class="total" id="total">₹0</div>
       <div class="month-label" id="monthLabel">Month overview</div>
@@ -376,6 +461,16 @@
           <div class="metric-value" id="avgMetric">₹0</div>
         </div>
       </div>
+      <div class="trend">
+        <div class="metric">
+          <div class="metric-label">Previous month</div>
+          <div class="metric-value" id="previousMetric">₹0</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Trend</div>
+          <div class="metric-value" id="trendMetric">No change</div>
+        </div>
+      </div>
 
       <div class="chart-wrap">
         <div class="chart-shell">
@@ -383,6 +478,11 @@
             <div class="chart-tooltip" id="chartTooltip"></div>
         </div>
         <div class="category-list" id="categoryList"></div>
+      </div>
+      <div class="chart-grid">
+        <div class="chart-panel"><h3>Daily spending</h3><canvas class="bar-chart" id="dailyChart" width="420" height="150"></canvas></div>
+        <div class="chart-panel"><h3>Weekly spending</h3><canvas class="bar-chart" id="weeklyChart" width="420" height="150"></canvas></div>
+        <div class="chart-panel"><h3>Monthly comparison</h3><canvas class="bar-chart" id="monthlyChart" width="420" height="150"></canvas></div>
       </div>
       <div style="display:flex; justify-content:flex-end; margin-top:10px;">
         <button class="subtle-btn" onclick="loadData()">Refresh</button>
@@ -392,6 +492,10 @@
     <div class="card">
       <div class="header-row">
         <h2>History</h2>
+      </div>
+      <div class="toolbar">
+        <input type="search" id="historySearch" placeholder="Search date or amount" aria-label="Search history" />
+        <select id="historyCategory" aria-label="Filter by category"><option value="">All categories</option></select>
       </div>
       <div class="list" id="list"></div>
     </div>
@@ -429,6 +533,13 @@
       .map((category) => `<option value="${category}">${category}</option>`)
       .join("");
     categorySelect.value = "Food";
+    const historyCategory = document.getElementById("historyCategory");
+    historyCategory.innerHTML += categories.map((category) => `<option value="${category}">${category}</option>`).join("");
+    const monthPicker = document.getElementById("monthPicker");
+    const now = new Date();
+    monthPicker.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    let selectedData = null;
+    let previousData = null;
 
     function currency(value) {
       return `₹${Number(value || 0).toLocaleString("en-IN")}`;
@@ -442,7 +553,7 @@
 
     document.getElementById("expenseDate").value = getTodayLocalDate();
 
-    function renderSummary(data) {
+    function renderSummary(data, previous) {
       const total = Number(data.total || 0);
       const entries = Array.isArray(data.expenses) ? data.expenses : [];
       const categoryTotals = data.categoryTotals || {};
@@ -463,6 +574,14 @@
       document.getElementById("entriesMetric").innerText = metricEntries;
       document.getElementById("largestMetric").innerText = currency(largest);
       document.getElementById("avgMetric").innerText = currency(avg);
+
+      const previousTotal = Number(previous?.total || 0);
+      const difference = total - previousTotal;
+      const percent = previousTotal ? Math.abs((difference / previousTotal) * 100) : 0;
+      document.getElementById("previousMetric").innerText = currency(previousTotal);
+      const trend = document.getElementById("trendMetric");
+      trend.innerText = previousTotal ? `${difference >= 0 ? "+" : "-"}${percent.toFixed(1)}%` : "New month";
+      trend.className = `metric-value ${difference > 0 ? "trend-up" : "trend-down"}`;
     }
 
     function renderCategoryBreakdown(data) {
@@ -671,7 +790,16 @@
 
     function renderHistory(data) {
       const list = document.getElementById("list");
-      const items = Array.isArray(data.expenses) ? data.expenses.slice().reverse() : [];
+      const search = document.getElementById("historySearch").value.trim().toLowerCase();
+      const category = document.getElementById("historyCategory").value;
+      const items = (Array.isArray(data.expenses) ? data.expenses : [])
+        .filter((item) => {
+          const categoryNames = Object.keys(item.categories || {});
+          const matchesCategory = !category || Number(item.categories?.[category] || 0) > 0;
+          const matchesSearch = !search || `${item.date} ${item.expense} ${categoryNames.join(" ")}`.toLowerCase().includes(search);
+          return matchesCategory && matchesSearch;
+        })
+        .slice().reverse();
 
       if (!items.length) {
         list.innerHTML = '<div class="empty-state">No expenses logged yet. Add your first one above.</div>';
@@ -685,16 +813,65 @@
           .map(([name, value]) => `${name}: ${currency(value)}`)
           .join(" • ");
 
+        const detailRows = Object.entries(item.categories || {})
+          .filter(([, value]) => Number(value) > 0)
+          .map(([name, value]) => `<div>${name}: <strong>${currency(value)}</strong></div>`)
+          .join("");
         return `
-          <div class="item">
-            <div>
+          <div class="item" onclick="this.classList.toggle('open')">
+            <div class="item-main">
               <div class="entry-date">${item.date}</div>
               <div class="entry-meta">${categorySummary || "No category details"}</div>
+              <div class="details">${detailRows || "No category details"}</div>
             </div>
             <div class="expense">${currency(item.expense)}</div>
+            <div class="chevron">⌄</div>
           </div>
         `;
       }).join("");
+    }
+
+    function parseDay(dateText) {
+      const [day, month, year] = String(dateText).split("/").map(Number);
+      return new Date(year, month - 1, day);
+    }
+
+    function drawBarChart(canvasId, labels, values, color) {
+      const canvas = document.getElementById(canvasId);
+      const ctx = canvas.getContext("2d");
+      const width = canvas.width;
+      const height = canvas.height;
+      const padding = { top: 12, right: 8, bottom: 28, left: 42 };
+      const max = Math.max(...values, 1);
+      ctx.clearRect(0, 0, width, height);
+      ctx.strokeStyle = "rgba(148,163,184,0.16)";
+      ctx.beginPath(); ctx.moveTo(padding.left, padding.top); ctx.lineTo(padding.left, height - padding.bottom); ctx.lineTo(width - padding.right, height - padding.bottom); ctx.stroke();
+      const slot = (width - padding.left - padding.right) / Math.max(values.length, 1);
+      const barWidth = Math.max(3, slot * 0.65);
+      values.forEach((value, index) => {
+        const barHeight = (value / max) * (height - padding.top - padding.bottom);
+        const x = padding.left + index * slot + (slot - barWidth) / 2;
+        const y = height - padding.bottom - barHeight;
+        ctx.fillStyle = color;
+        ctx.fillRect(x, y, barWidth, barHeight);
+        if (values.length <= 12 || index % Math.ceil(values.length / 8) === 0) {
+          ctx.fillStyle = "#9aa8bf"; ctx.font = "10px sans-serif"; ctx.textAlign = "center";
+          ctx.fillText(labels[index], x + barWidth / 2, height - 9);
+        }
+      });
+      ctx.fillStyle = "#e5eefb"; ctx.font = "10px sans-serif"; ctx.textAlign = "right";
+      ctx.fillText(currency(max), padding.left - 5, padding.top + 4);
+    }
+
+    function renderCharts(data, previous) {
+      const items = Array.isArray(data.expenses) ? data.expenses : [];
+      const daily = items.map((item) => ({ label: item.date.split("/")[0], value: Number(item.expense || 0) }));
+      drawBarChart("dailyChart", daily.map((item) => item.label), daily.map((item) => item.value), "#38bdf8");
+
+      const weeklyTotals = [0, 0, 0, 0, 0];
+      items.forEach((item) => { const day = parseDay(item.date).getDate(); weeklyTotals[Math.min(Math.floor((day - 1) / 7), 4)] += Number(item.expense || 0); });
+      drawBarChart("weeklyChart", weeklyTotals.map((_, index) => `W${index + 1}`), weeklyTotals, "#4ade80");
+      drawBarChart("monthlyChart", ["Previous", "Selected"], [Number(previous?.total || 0), Number(data.total || 0)], "#f97316");
     }
 
     async function addExpense() {
@@ -702,6 +879,7 @@
       const amount = amountEl.value;
       const selectedDate = document.getElementById("expenseDate").value;
       const category = document.getElementById("category").value;
+      const notes = document.getElementById("expenseNotes").value.trim();
       const msg = document.getElementById("msg");
       const addBtn = document.getElementById("addBtn");
 
@@ -725,13 +903,14 @@
         const res = await fetch("/api/add-expense", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ amount: Number(amount), date: selectedDate, category })
+          body: JSON.stringify({ amount: Number(amount), date: selectedDate, category, notes })
         });
 
         if (!res.ok) throw new Error('save-failed');
 
         msg.innerText = "Expense added successfully ✅";
         amountEl.value = "";
+        document.getElementById("expenseNotes").value = "";
         categorySelect.value = "Food";
 
         await loadData();
@@ -746,15 +925,34 @@
     }
 
     async function loadData() {
-      const res = await fetch("/api/month-expenses");
+      const month = monthPicker.value;
+      const selectedDate = new Date(`${month}-01T00:00:00`);
+      selectedDate.setMonth(selectedDate.getMonth() - 1);
+      const previousMonth = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, "0")}`;
+      const [res, previousRes] = await Promise.all([
+        fetch(`/api/month-expenses?month=${month}`),
+        fetch(`/api/month-expenses?month=${previousMonth}`)
+      ]);
       const data = res.ok ? await res.json() : { total: 0, expenses: [], categoryTotals: {} };
+      const previous = previousRes.ok ? await previousRes.json() : { total: 0, expenses: [], categoryTotals: {} };
+      selectedData = data;
+      previousData = previous;
 
-      renderSummary(data);
+      renderSummary(data, previous);
       renderCategoryBreakdown(data);
       renderPieChart(data);
       renderHistory(data);
+      renderCharts(data, previous);
     }
 
+    monthPicker.addEventListener("change", loadData);
+    document.getElementById("monthReset").addEventListener("click", () => {
+      const current = new Date();
+      monthPicker.value = `${current.getFullYear()}-${String(current.getMonth() + 1).padStart(2, "0")}`;
+      loadData();
+    });
+    document.getElementById("historySearch").addEventListener("input", () => selectedData && renderHistory(selectedData));
+    historyCategory.addEventListener("change", () => selectedData && renderHistory(selectedData));
     loadData();
   </script>
 </body>
