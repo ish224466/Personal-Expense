@@ -17,7 +17,8 @@ export const EXPENSE_CATEGORIES = [
   "Other",
 ];
 
-const HEADER_ROW = ["Date", ...EXPENSE_CATEGORIES, "Total"];
+const NOTES_HEADER = "Notes";
+const HEADER_ROW = ["Date", ...EXPENSE_CATEGORIES, "Total", NOTES_HEADER];
 const SUMMARY_ROW_LABEL = "Total";
 
 function getColumnLetter(index) {
@@ -78,6 +79,7 @@ function buildEmptyMonthRows(year, monthIndex) {
       formatExpenseDate(day, monthIndex, year),
       ...EXPENSE_CATEGORIES.map(() => 0),
       0,
+      "",
     ]);
   }
 
@@ -102,6 +104,30 @@ async function ensureMonthlySheetExists(sheets, sheetName) {
   );
 
   if (existingSheet) {
+    const sheetId = existingSheet.properties?.sheetId;
+    const columnCount = existingSheet.properties?.gridProperties?.columnCount || 0;
+
+    if (sheetId !== undefined && columnCount < HEADER_ROW.length) {
+      await sheets.spreadsheets.batchUpdate({
+        spreadsheetId: SPREADSHEET_ID,
+        requestBody: {
+          requests: [
+            {
+              updateSheetProperties: {
+                properties: {
+                  sheetId,
+                  gridProperties: {
+                    columnCount: HEADER_ROW.length,
+                  },
+                },
+                fields: "gridProperties.columnCount",
+              },
+            },
+          ],
+        },
+      });
+    }
+
     return;
   }
 
@@ -143,9 +169,11 @@ function mergeExistingRowsIntoMonthGrid(existingRows, year, monthIndex) {
 
     const targetRow = monthRows[day - 1];
 
-    if (row.length >= HEADER_ROW.length) {
+    if (row.length >= HEADER_ROW.length - 1) {
       for (let columnIndex = 1; columnIndex < HEADER_ROW.length; columnIndex++) {
-        targetRow[columnIndex] = Number(row[columnIndex] || 0) || 0;
+        targetRow[columnIndex] = columnIndex === HEADER_ROW.length - 1
+          ? String(row[columnIndex] || "")
+          : Number(row[columnIndex] || 0) || 0;
       }
     } else {
       const legacyAmount = Number(row[1] || 0) || 0;
@@ -206,7 +234,7 @@ async function ensureSheetStructure(sheets, sheetName, year, monthIndex) {
   return normalizedRows;
 }
 
-export async function addExpense(amount, dateStr, category) {
+export async function addExpense(amount, dateStr, category, notes = "") {
   const sheets = await getSheetsClient();
 
   if (!EXPENSE_CATEGORIES.includes(category)) {
@@ -239,6 +267,10 @@ export async function addExpense(amount, dateStr, category) {
   row[0] = formattedDate;
   row[categoryColumnIndex - 1] = updatedCategoryAmount;
   row[totalColumnIndex - 1] = updatedTotal;
+  const notesColumnIndex = HEADER_ROW.length - 1;
+  const existingNotes = String(row[notesColumnIndex] || "").trim();
+  const cleanNotes = String(notes || "").trim().slice(0, 500);
+  row[notesColumnIndex] = [existingNotes, cleanNotes].filter(Boolean).join(" | ");
 
   await sheets.spreadsheets.values.update({
     spreadsheetId: SPREADSHEET_ID,
@@ -252,16 +284,19 @@ export async function addExpense(amount, dateStr, category) {
   return "Updated existing date";
 }
 
-export async function getMonthlyExpenses() {
+export async function getMonthlyExpenses(monthParam) {
   const sheets = await getSheetsClient();
 
   const today = new Date();
-  const month = today.toLocaleString("default", { month: "long" });
-  const year = today.getFullYear();
+  const requestedMonth = /^\d{4}-\d{2}$/.test(monthParam || "")
+    ? parseLocalDate(`${monthParam}-01`)
+    : today;
+  const month = requestedMonth.toLocaleString("default", { month: "long" });
+  const year = requestedMonth.getFullYear();
 
   const sheetName = `${month}/${year}`;
 
-  const rows = await ensureSheetStructure(sheets, sheetName, year, today.getMonth());
+  const rows = await ensureSheetStructure(sheets, sheetName, year, requestedMonth.getMonth());
 
   let expenses = [];
   let total = 0;
@@ -293,6 +328,7 @@ export async function getMonthlyExpenses() {
   }
 
   return {
+    month: `${year}-${String(requestedMonth.getMonth() + 1).padStart(2, "0")}`,
     total,
     categoryTotals,
     expenses,
