@@ -14,6 +14,7 @@ export const EXPENSE_CATEGORIES = [
   "Trip",
   "Subscription",
   "Home",
+  "Medical",
   "Other",
 ];
 
@@ -153,6 +154,11 @@ async function ensureMonthlySheetExists(sheets, sheetName) {
 
 function mergeExistingRowsIntoMonthGrid(existingRows, year, monthIndex) {
   const monthRows = buildEmptyMonthRows(year, monthIndex);
+  const existingHeader = Array.isArray(existingRows[1]) ? existingRows[1] : [];
+  const existingColumnIndexes = Object.fromEntries(
+    existingHeader.map((header, index) => [header, index]),
+  );
+  const hasNamedHeader = existingHeader.length > 0;
 
   for (let i = 2; i < existingRows.length; i++) {
     const row = existingRows[i];
@@ -169,7 +175,20 @@ function mergeExistingRowsIntoMonthGrid(existingRows, year, monthIndex) {
 
     const targetRow = monthRows[day - 1];
 
-    if (row.length >= HEADER_ROW.length - 1) {
+    if (hasNamedHeader) {
+      for (let columnIndex = 1; columnIndex < HEADER_ROW.length; columnIndex++) {
+        const header = HEADER_ROW[columnIndex];
+        const sourceIndex = existingColumnIndexes[header];
+
+        if (sourceIndex === undefined) {
+          continue;
+        }
+
+        targetRow[columnIndex] = header === NOTES_HEADER
+          ? String(row[sourceIndex] || "")
+          : Number(row[sourceIndex] || 0) || 0;
+      }
+    } else if (row.length >= HEADER_ROW.length - 1) {
       for (let columnIndex = 1; columnIndex < HEADER_ROW.length; columnIndex++) {
         targetRow[columnIndex] = columnIndex === HEADER_ROW.length - 1
           ? String(row[columnIndex] || "")
