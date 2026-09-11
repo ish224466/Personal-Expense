@@ -199,6 +199,40 @@
       position: relative;
     }
 
+    .chart-shell.is-loading canvas,
+    .chart-grid.is-loading {
+      opacity: 0.35;
+    }
+
+    .chart-loading {
+      position: absolute;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 8px;
+      color: var(--text);
+      font-size: 0.8rem;
+      font-weight: 700;
+      background: rgba(7, 17, 31, 0.3);
+      z-index: 2;
+    }
+
+    .chart-shell.is-loading .chart-loading {
+      display: flex;
+    }
+
+    .chart-loading::before {
+      content: "";
+      width: 18px;
+      height: 18px;
+      border: 2px solid rgba(229, 238, 251, 0.35);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
     canvas {
       width: 240px;
       height: 240px;
@@ -320,10 +354,87 @@
       margin-top: 12px;
     }
 
+    .monthly-toolbar {
+      grid-template-columns: 1fr;
+    }
+
     .toolbar input, .toolbar select {
       min-width: 0;
       padding: 10px 11px;
       font-size: 0.85rem;
+    }
+
+    .monthly-status {
+      min-height: 20px;
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 0.8rem;
+    }
+
+    .monthly-status.loading {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .monthly-status.loading::before {
+      content: "";
+      width: 12px;
+      height: 12px;
+      border: 2px solid rgba(154, 168, 191, 0.35);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    .monthly-status.error {
+      color: var(--danger);
+    }
+
+    .monthly-content {
+      position: relative;
+    }
+
+    .monthly-content.is-loading > :not(.monthly-loading-overlay) {
+      opacity: 0.35;
+    }
+
+    .monthly-loading-overlay {
+      position: absolute;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 8px;
+      color: var(--text);
+      font-size: 0.85rem;
+      font-weight: 700;
+      background: rgba(7, 17, 31, 0.22);
+      z-index: 5;
+    }
+
+    .monthly-content.is-loading .monthly-loading-overlay {
+      display: flex;
+    }
+
+    .monthly-loading-overlay::before {
+      content: "";
+      width: 22px;
+      height: 22px;
+      border: 3px solid rgba(229, 238, 251, 0.35);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    button:disabled, input:disabled {
+      cursor: wait;
+      opacity: 0.65;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
     }
 
     .trend {
@@ -440,14 +551,17 @@
       <div class="header-row">
         <h2>Monthly Expense</h2>
       </div>
-      <div class="toolbar">
+      <div class="toolbar monthly-toolbar">
         <input type="month" id="monthPicker" aria-label="View month" />
         <button class="subtle-btn" id="monthReset" type="button">Current month</button>
       </div>
-      <div class="total" id="total">₹0</div>
-      <div class="month-label" id="monthLabel">Month overview</div>
+      <div class="monthly-status" id="monthlyStatus" role="status" aria-live="polite"></div>
 
-      <div class="summary-grid">
+      <div class="monthly-content" id="monthlyContent">
+        <div class="total" id="total">₹0</div>
+        <div class="month-label" id="monthLabel">Month overview</div>
+
+        <div class="summary-grid">
         <div class="metric">
           <div class="metric-label">Entries</div>
           <div class="metric-value" id="entriesMetric">0</div>
@@ -460,8 +574,8 @@
           <div class="metric-label">Avg/day</div>
           <div class="metric-value" id="avgMetric">₹0</div>
         </div>
-      </div>
-      <div class="trend">
+        </div>
+        <div class="trend">
         <div class="metric">
           <div class="metric-label">Previous month</div>
           <div class="metric-value" id="previousMetric">₹0</div>
@@ -470,22 +584,25 @@
           <div class="metric-label">Trend</div>
           <div class="metric-value" id="trendMetric">No change</div>
         </div>
-      </div>
+        </div>
 
-      <div class="chart-wrap">
+        <div class="chart-wrap">
         <div class="chart-shell">
             <canvas id="expenseChart" width="240" height="240"></canvas>
             <div class="chart-tooltip" id="chartTooltip"></div>
+          <div class="chart-loading" id="chartLoading">Updating charts...</div>
         </div>
         <div class="category-list" id="categoryList"></div>
-      </div>
-      <div class="chart-grid">
+        </div>
+        <div class="chart-grid">
         <div class="chart-panel"><h3>Daily spending</h3><canvas class="bar-chart" id="dailyChart" width="420" height="150"></canvas></div>
         <div class="chart-panel"><h3>Weekly spending</h3><canvas class="bar-chart" id="weeklyChart" width="420" height="150"></canvas></div>
         <div class="chart-panel"><h3>Monthly comparison</h3><canvas class="bar-chart" id="monthlyChart" width="420" height="150"></canvas></div>
-      </div>
-      <div style="display:flex; justify-content:flex-end; margin-top:10px;">
-        <button class="subtle-btn" onclick="loadData()">Refresh</button>
+        </div>
+        <div style="display:flex; justify-content:flex-end; margin-top:10px;">
+        <button class="subtle-btn" id="monthlyRefresh" onclick="loadData()">Refresh</button>
+        </div>
+        <div class="monthly-loading-overlay">Loading monthly data...</div>
       </div>
     </div>
 
@@ -530,6 +647,20 @@
       Other: "#475569"         // slate (muted)
     };
 
+    const pieChartColors = [
+      "#7c3aed", // purple
+      "#10b981", // emerald
+      "#f97316", // orange
+      "#0ea5e9", // sky
+      "#ef4444", // red
+      "#eab308", // yellow
+      "#db2777", // magenta
+      "#14b8a6", // turquoise
+      "#84cc16", // lime
+      "#6366f1", // indigo
+      "#f43f5e"  // rose
+    ];
+
     const categorySelect = document.getElementById("category");
     categorySelect.innerHTML = categories
       .map((category) => `<option value="${category}">${category}</option>`)
@@ -538,6 +669,12 @@
     const historyCategory = document.getElementById("historyCategory");
     historyCategory.innerHTML += categories.map((category) => `<option value="${category}">${category}</option>`).join("");
     const monthPicker = document.getElementById("monthPicker");
+    const monthReset = document.getElementById("monthReset");
+    const monthlyRefresh = document.getElementById("monthlyRefresh");
+    const monthlyStatus = document.getElementById("monthlyStatus");
+    const monthlyContent = document.getElementById("monthlyContent");
+    const chartShell = document.querySelector(".chart-shell");
+    const chartGrid = document.querySelector(".chart-grid");
     const now = new Date();
     monthPicker.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
     let selectedData = null;
@@ -555,7 +692,7 @@
 
     document.getElementById("expenseDate").value = getTodayLocalDate();
 
-    function renderSummary(data, previous) {
+    function renderSummary(data, previous, month) {
       const total = Number(data.total || 0);
       const entries = Array.isArray(data.expenses) ? data.expenses : [];
       const categoryTotals = data.categoryTotals || {};
@@ -564,7 +701,7 @@
       document.getElementById("monthLabel").innerText = new Intl.DateTimeFormat("en-US", {
         month: "long",
         year: "numeric"
-      }).format(new Date());
+      }).format(new Date(`${month}-01T00:00:00`));
 
       const metricEntries = entries.length;
       const largest = Object.entries(categoryTotals).reduce((max, [name, value]) => {
@@ -643,11 +780,11 @@
 
       // precompute slice angles
       let start = -Math.PI / 2;
-      entries.forEach(({ name, value }) => {
+      entries.forEach(({ name, value }, index) => {
         const slice = (value / total) * Math.PI * 2;
         const s = start;
         const e = start + slice;
-        chartSlices.push({ start: s, end: e, name, value, color: categoryColors[name] || "#4ade80", percent: total ? (value / total) * 100 : 0 });
+        chartSlices.push({ start: s, end: e, name, value, color: pieChartColors[index % pieChartColors.length], percent: total ? (value / total) * 100 : 0 });
         start = e;
       });
 
@@ -926,29 +1063,57 @@
       }
     }
 
+    function setMonthlyLoading(isLoading) {
+      [monthPicker, monthReset, monthlyRefresh].forEach((control) => {
+        control.disabled = isLoading;
+      });
+      monthlyContent.classList.toggle("is-loading", isLoading);
+      chartShell.classList.toggle("is-loading", isLoading);
+      chartGrid.classList.toggle("is-loading", isLoading);
+      monthlyStatus.className = isLoading ? "monthly-status loading" : "monthly-status";
+      monthlyStatus.innerText = isLoading ? "Loading monthly expenses..." : "";
+    }
+
     async function loadData() {
       const month = monthPicker.value;
       const selectedDate = new Date(`${month}-01T00:00:00`);
       selectedDate.setMonth(selectedDate.getMonth() - 1);
       const previousMonth = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, "0")}`;
-      const [res, previousRes] = await Promise.all([
-        fetch(`/api/month-expenses?month=${month}`),
-        fetch(`/api/month-expenses?month=${previousMonth}`)
-      ]);
-      const data = res.ok ? await res.json() : { total: 0, expenses: [], categoryTotals: {} };
-      const previous = previousRes.ok ? await previousRes.json() : { total: 0, expenses: [], categoryTotals: {} };
-      selectedData = data;
-      previousData = previous;
+      setMonthlyLoading(true);
 
-      renderSummary(data, previous);
-      renderCategoryBreakdown(data);
-      renderPieChart(data);
-      renderHistory(data);
-      renderCharts(data, previous);
+      try {
+        const [res, previousRes] = await Promise.all([
+          fetch(`/api/month-expenses?month=${month}`),
+          fetch(`/api/month-expenses?month=${previousMonth}`)
+        ]);
+
+        if (!res.ok || !previousRes.ok) {
+          throw new Error("monthly-data-unavailable");
+        }
+
+        const data = await res.json();
+        const previous = await previousRes.json();
+        selectedData = data;
+        previousData = previous;
+
+        renderSummary(data, previous, month);
+        renderCategoryBreakdown(data);
+        renderPieChart(data);
+        renderHistory(data);
+        renderCharts(data, previous);
+        setMonthlyLoading(false);
+      } catch (error) {
+        monthlyStatus.className = "monthly-status error";
+        monthlyStatus.innerText = "Unable to load monthly expenses. Check the connection to Google Sheets and try again.";
+      } finally {
+        [monthPicker, monthReset, monthlyRefresh].forEach((control) => {
+          control.disabled = false;
+        });
+      }
     }
 
     monthPicker.addEventListener("change", loadData);
-    document.getElementById("monthReset").addEventListener("click", () => {
+    monthReset.addEventListener("click", () => {
       const current = new Date();
       monthPicker.value = `${current.getFullYear()}-${String(current.getMonth() + 1).padStart(2, "0")}`;
       loadData();
