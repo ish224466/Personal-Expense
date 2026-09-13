@@ -274,6 +274,146 @@
       border-radius: 12px;
     }
 
+    .trip-fields {
+      display: none;
+    }
+
+    .trip-fields.visible {
+      display: block;
+    }
+
+    .trip-breakdown {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 12px;
+      padding: 10px;
+      background: rgba(7, 17, 31, 0.32);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+    }
+
+    .trip-destination {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      width: 100%;
+      margin: 0;
+      padding: 11px 12px;
+      text-align: left;
+      background: rgba(30, 41, 59, 0.85);
+      color: var(--text);
+      border: 1px solid var(--line);
+      font-size: 0.8rem;
+    }
+
+    .trip-destination span {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-weight: 800;
+    }
+
+    .trip-destination strong {
+      flex: 0 0 auto;
+      color: var(--primary);
+      white-space: nowrap;
+    }
+
+    .trip-destination::after {
+      content: "⌄";
+      float: right;
+      color: var(--muted);
+    }
+
+    .trip-destination.open::after {
+      content: "⌃";
+    }
+
+    .trip-details {
+      display: none;
+      padding: 10px 4px 4px;
+    }
+
+    .trip-details.open {
+      display: block;
+    }
+
+    .trip-details canvas {
+      width: 180px;
+      height: 180px;
+      margin: 0;
+      cursor: default;
+    }
+
+    .trip-detail-summary {
+      display: grid;
+      grid-template-columns: 180px minmax(0, 1fr);
+      align-items: center;
+      gap: 14px;
+      margin: 4px 0 10px;
+    }
+
+    .trip-category-totals {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+
+    .trip-dates {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 0 2px 8px;
+      color: var(--muted);
+      font-size: 0.75rem;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .trip-dates span:last-child {
+      text-align: right;
+      overflow-wrap: anywhere;
+    }
+
+    .trip-entry-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-top: 12px;
+    }
+
+    .trip-entry-list::before {
+      content: "Expense details";
+      color: var(--muted);
+      font-size: 0.7rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .trip-entry {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 4px 8px;
+      padding: 9px 10px;
+      background: rgba(15, 23, 42, 0.72);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      font-size: 0.74rem;
+    }
+
+    .trip-entry-date,
+    .trip-entry-note {
+      color: var(--muted);
+    }
+
+    .trip-entry-note {
+      grid-column: 1 / -1;
+      overflow-wrap: anywhere;
+    }
+
     .category-top {
       display: flex;
       justify-content: space-between;
@@ -526,6 +666,12 @@
         align-self: stretch;
         position: static;
       }
+      .trip-detail-summary {
+        grid-template-columns: 1fr;
+      }
+      .trip-details canvas {
+        margin: 0 auto;
+      }
     }
   </style>
 </head>
@@ -539,6 +685,12 @@
       <input type="number" id="amount" placeholder="Enter amount ₹" />
       <label for="category">Category</label>
       <select id="category"></select>
+      <div class="trip-fields" id="tripFields">
+        <label for="tripDestination">Trip destination</label>
+        <input type="text" id="tripDestination" maxlength="120" placeholder="e.g. Goa" />
+        <label for="tripCategory">Trip expense category</label>
+        <select id="tripCategory"></select>
+      </div>
       <label for="expenseDate">Date</label>
       <input type="date" id="expenseDate" />
       <label for="expenseNotes">Notes (private)</label>
@@ -593,6 +745,7 @@
           <div class="chart-loading" id="chartLoading">Updating charts...</div>
         </div>
         <div class="category-list" id="categoryList"></div>
+        <div class="trip-breakdown" id="tripBreakdown" hidden></div>
         </div>
         <div class="chart-grid">
         <div class="chart-panel"><h3>Daily spending</h3><canvas class="bar-chart" id="dailyChart" width="420" height="150"></canvas></div>
@@ -632,6 +785,7 @@
       "Medical",
       "Other",
     ];
+    const tripCategories = ["Food", "Stay", "Travel", "Booking/Tickets", ...categories.filter((category) => !["Food", "Trip", "Commute"].includes(category))];
 
     const categoryColors = {
       Food: "#16a34a",         // green
@@ -666,6 +820,12 @@
       .map((category) => `<option value="${category}">${category}</option>`)
       .join("");
     categorySelect.value = "Food";
+    const tripFields = document.getElementById("tripFields");
+    const tripDestination = document.getElementById("tripDestination");
+    const tripCategory = document.getElementById("tripCategory");
+    tripCategory.innerHTML = tripCategories
+      .map((category) => `<option value="${category}">${category}</option>`)
+      .join("");
     const historyCategory = document.getElementById("historyCategory");
     historyCategory.innerHTML += categories.map((category) => `<option value="${category}">${category}</option>`).join("");
     const monthPicker = document.getElementById("monthPicker");
@@ -691,6 +851,10 @@
     }
 
     document.getElementById("expenseDate").value = getTodayLocalDate();
+
+    categorySelect.addEventListener("change", () => {
+      tripFields.classList.toggle("visible", categorySelect.value === "Trip");
+    });
 
     function renderSummary(data, previous, month) {
       const total = Number(data.total || 0);
@@ -758,6 +922,113 @@
           </div>
         `;
       }).join("");
+    }
+
+    const tripChartData = {};
+
+    function renderTripBreakdown(data) {
+      const container = document.getElementById("tripBreakdown");
+      const destinations = {};
+
+      (data.trips || []).forEach((tripDay) => {
+        Object.entries(tripDay.destinations || {}).forEach(([destination, trip]) => {
+          destinations[destination] ||= { total: 0, categories: {}, dates: new Set(), entries: [] };
+          destinations[destination].total += Number(trip.total || 0);
+          destinations[destination].dates.add(tripDay.date);
+          destinations[destination].entries.push(...(trip.entries || [{
+            date: tripDay.date,
+            categories: trip.categories || {},
+            amount: trip.total,
+            notes: "",
+          }]));
+          Object.entries(trip.categories || {}).forEach(([category, value]) => {
+            destinations[destination].categories[category] = (destinations[destination].categories[category] || 0) + Number(value || 0);
+          });
+        });
+      });
+
+      const entries = Object.entries(destinations).sort(([, a], [, b]) => b.total - a.total);
+      container.hidden = !entries.length;
+      if (!entries.length) {
+        container.innerHTML = "";
+        return;
+      }
+
+      container.innerHTML = entries.map(([destination, trip], index) => {
+        const chartId = `tripChart${index}`;
+        tripChartData[chartId] = trip.categories;
+        const categoryRows = Object.entries(trip.categories)
+          .sort(([, a], [, b]) => b - a)
+          .map(([category, value]) => `<div class="category-top"><span>${category}</span><strong>${currency(value)}</strong></div>`)
+          .join("");
+        const dates = [...trip.dates].sort().join(", ");
+        const expenseRows = trip.entries
+          .sort((a, b) => String(a.date).localeCompare(String(b.date)))
+          .flatMap((entry) => Object.entries(entry.categories || {})
+            .filter(([, value]) => Number(value) > 0)
+            .map(([category, value]) => `
+              <div class="trip-entry">
+                <span>${entry.date} · ${category}</span>
+                <strong>${currency(value)}</strong>
+                ${entry.notes ? `<span class="trip-entry-note">${entry.notes}</span>` : ""}
+              </div>
+            `))
+          .join("");
+        return `
+          <button class="trip-destination" type="button" onclick="toggleTripDetails(this)">
+            <span>${destination}</span><strong>${currency(trip.total)}</strong>
+          </button>
+          <div class="trip-details">
+            <div class="trip-dates"><span>Dates</span><span>${dates}</span></div>
+            <div class="trip-detail-summary">
+              <canvas id="${chartId}" width="180" height="180"></canvas>
+              <div class="trip-category-totals">${categoryRows}</div>
+            </div>
+            <div class="trip-entry-list">${expenseRows}</div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function drawTripPie(canvas, categoryTotals) {
+      const ctx = canvas.getContext("2d");
+      const entries = Object.entries(categoryTotals).filter(([, value]) => Number(value) > 0);
+      const total = entries.reduce((sum, [, value]) => sum + Number(value), 0);
+      const center = canvas.width / 2;
+      const outer = canvas.width / 2 - 12;
+      const inner = outer - 18;
+      let start = -Math.PI / 2;
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      entries.forEach(([category, value], index) => {
+        const end = start + (Number(value) / total) * Math.PI * 2;
+        ctx.beginPath();
+        ctx.moveTo(center, center);
+        ctx.arc(center, center, outer, start, end);
+        ctx.closePath();
+        ctx.fillStyle = pieChartColors[index % pieChartColors.length];
+        ctx.fill();
+        start = end;
+      });
+
+      ctx.beginPath();
+      ctx.arc(center, center, inner, 0, Math.PI * 2);
+      ctx.fillStyle = "#0d1b2a";
+      ctx.fill();
+      ctx.fillStyle = "#e5eefb";
+      ctx.font = "700 12px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText(currency(total), center, center + 4);
+    }
+
+    function toggleTripDetails(button) {
+      const details = button.nextElementSibling;
+      const isOpen = details.classList.toggle("open");
+      button.classList.toggle("open", isOpen);
+      if (isOpen) {
+        const canvas = details.querySelector("canvas");
+        drawTripPie(canvas, tripChartData[canvas.id]);
+      }
     }
 
     let chartData = null;
@@ -1035,14 +1306,26 @@
         return;
       }
 
+      const isTrip = category === "Trip";
+      if (isTrip && !tripDestination.value.trim()) {
+        msg.innerText = "Please enter a trip destination.";
+        return;
+      }
+
       try {
         addBtn.disabled = true;
         msg.innerText = "Saving...";
 
-        const res = await fetch("/api/add-expense", {
+        const res = await fetch(isTrip ? "/api/add-trip-expense" : "/api/add-expense", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ amount: Number(amount), date: selectedDate, category, notes })
+          body: JSON.stringify({
+            amount: Number(amount),
+            date: selectedDate,
+            category: isTrip ? tripCategory.value : category,
+            destination: isTrip ? tripDestination.value.trim() : undefined,
+            notes,
+          })
         });
 
         if (!res.ok) throw new Error('save-failed');
@@ -1050,7 +1333,9 @@
         msg.innerText = "Expense added successfully ✅";
         amountEl.value = "";
         document.getElementById("expenseNotes").value = "";
+        tripDestination.value = "";
         categorySelect.value = "Food";
+        tripFields.classList.remove("visible");
 
         await loadData();
 
@@ -1098,6 +1383,7 @@
 
         renderSummary(data, previous, month);
         renderCategoryBreakdown(data);
+        renderTripBreakdown(data);
         renderPieChart(data);
         renderHistory(data);
         renderCharts(data, previous);

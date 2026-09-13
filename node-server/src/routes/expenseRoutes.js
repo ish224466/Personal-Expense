@@ -1,11 +1,11 @@
 import express from "express";
-import { addExpense, EXPENSE_CATEGORIES } from "../services/sheetService.js";
+import { addExpense, addTripExpense, EXPENSE_CATEGORIES, TRIP_CATEGORIES } from "../services/sheetService.js";
 
 const router = express.Router();
 
 router.post("/add-expense", async (req, res) => {
   try {
-    const { amount, date, category, notes } = req.body;
+    const { amount, date, category, destination, notes } = req.body;
 
     if (!amount || amount <= 0) {
       return res.status(400).json({ message: "Invalid amount" });
@@ -15,7 +15,16 @@ router.post("/add-expense", async (req, res) => {
       return res.status(400).json({ message: "Date required" });
     }
 
-    if (!category || !EXPENSE_CATEGORIES.includes(category)) {
+    if (destination) {
+      if (!TRIP_CATEGORIES.includes(category)) {
+        return res.status(400).json({ message: "Invalid trip category" });
+      }
+
+      const result = await addTripExpense({ amount, dateStr: date, destination, category, notes });
+      return res.json({ message: result });
+    }
+
+    if (!category || category === "Trip" || !EXPENSE_CATEGORIES.includes(category)) {
       return res.status(400).json({ message: "Invalid category" });
     }
 
@@ -24,6 +33,30 @@ router.post("/add-expense", async (req, res) => {
     res.json({ message: result });
   } catch (err) {
     console.error("Failed to save expense:", err?.response?.data || err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post("/add-trip-expense", async (req, res) => {
+  try {
+    const { amount, date, destination, category, notes } = req.body;
+
+    if (!amount || amount <= 0) {
+      return res.status(400).json({ message: "Invalid amount" });
+    }
+
+    if (!date) {
+      return res.status(400).json({ message: "Date required" });
+    }
+
+    if (!destination || !TRIP_CATEGORIES.includes(category)) {
+      return res.status(400).json({ message: "Destination and valid trip category required" });
+    }
+
+    const result = await addTripExpense({ amount, dateStr: date, destination, category, notes });
+    res.json({ message: result });
+  } catch (err) {
+    console.error("Failed to save trip expense:", err?.response?.data || err);
     res.status(500).json({ error: err.message });
   }
 });

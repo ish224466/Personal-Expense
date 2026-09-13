@@ -12,7 +12,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 app.use(express.static(path.join(__dirname, "../public")));
-app.use(express.json());
+app.use(express.json({ limit: "8mb" }));
 app.use("/api", expenseRoutes);
 
 app.get("/health", (req, res) => {
