@@ -293,6 +293,24 @@
       border-radius: 14px;
     }
 
+    .trip-breakdown-heading {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 2px 2px 4px;
+    }
+
+    .trip-breakdown-heading strong {
+      font-size: 0.9rem;
+    }
+
+    .trip-breakdown-heading span,
+    .trip-chart-hint {
+      color: var(--muted);
+      font-size: 0.72rem;
+    }
+
     .trip-destination {
       display: flex;
       align-items: center;
@@ -345,7 +363,7 @@
       width: 180px;
       height: 180px;
       margin: 0;
-      cursor: default;
+      cursor: pointer;
     }
 
     .trip-detail-summary {
@@ -360,6 +378,32 @@
       display: flex;
       flex-direction: column;
       gap: 7px;
+    }
+
+    .trip-category-row {
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 7px;
+    }
+
+    .trip-category-row strong {
+      margin-left: auto;
+    }
+
+    .trip-color-swatch {
+      width: 9px;
+      height: 9px;
+      flex: 0 0 auto;
+      border-radius: 50%;
+    }
+
+    .trip-chart-selection {
+      min-height: 18px;
+      margin: 0 2px 8px;
+      color: var(--text);
+      font-size: 0.76rem;
+      font-weight: 700;
     }
 
     .trip-dates {
@@ -815,6 +859,11 @@
       "#f43f5e"  // rose
     ];
 
+    const tripPieColors = [
+      "#f97316", "#06b6d4", "#eab308", "#f43f5e", "#84cc16",
+      "#a855f7", "#14b8a6", "#fb7185", "#38bdf8", "#f59e0b", "#22c55e"
+    ];
+
     const categorySelect = document.getElementById("category");
     categorySelect.innerHTML = categories
       .map((category) => `<option value="${category}">${category}</option>`)
@@ -925,6 +974,7 @@
     }
 
     const tripChartData = {};
+    const tripChartStates = {};
 
     function renderTripBreakdown(data) {
       const container = document.getElementById("tripBreakdown");
@@ -954,12 +1004,12 @@
         return;
       }
 
-      container.innerHTML = entries.map(([destination, trip], index) => {
+      container.innerHTML = `<div class="trip-breakdown-heading"><strong>Trips by destination</strong><span>Open a trip for its category breakdown</span></div>${entries.map(([destination, trip], index) => {
         const chartId = `tripChart${index}`;
         tripChartData[chartId] = trip.categories;
         const categoryRows = Object.entries(trip.categories)
           .sort(([, a], [, b]) => b - a)
-          .map(([category, value]) => `<div class="category-top"><span>${category}</span><strong>${currency(value)}</strong></div>`)
+          .map(([category, value], categoryIndex) => `<div class="category-top trip-category-row"><span class="trip-color-swatch" style="background: ${tripPieColors[categoryIndex % tripPieColors.length]};"></span><span>${category}</span><strong>${currency(value)}</strong></div>`)
           .join("");
         const dates = [...trip.dates].sort().join(", ");
         const expenseRows = trip.entries
@@ -980,14 +1030,18 @@
           </button>
           <div class="trip-details">
             <div class="trip-dates"><span>Dates</span><span>${dates}</span></div>
+            <div class="trip-chart-hint">Trip spending by category</div>
             <div class="trip-detail-summary">
-              <canvas id="${chartId}" width="180" height="180"></canvas>
+              <div>
+                <canvas id="${chartId}" width="180" height="180"></canvas>
+                <div class="trip-chart-selection" id="${chartId}Selection">Select a slice to see its category</div>
+              </div>
               <div class="trip-category-totals">${categoryRows}</div>
             </div>
             <div class="trip-entry-list">${expenseRows}</div>
           </div>
         `;
-      }).join("");
+      }).join("")}`;
     }
 
     function drawTripPie(canvas, categoryTotals) {
@@ -998,15 +1052,17 @@
       const outer = canvas.width / 2 - 12;
       const inner = outer - 18;
       let start = -Math.PI / 2;
+      const slices = [];
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       entries.forEach(([category, value], index) => {
         const end = start + (Number(value) / total) * Math.PI * 2;
+        slices.push({ start, end, category, value: Number(value), color: tripPieColors[index % tripPieColors.length] });
         ctx.beginPath();
         ctx.moveTo(center, center);
         ctx.arc(center, center, outer, start, end);
         ctx.closePath();
-        ctx.fillStyle = pieChartColors[index % pieChartColors.length];
+        ctx.fillStyle = tripPieColors[index % tripPieColors.length];
         ctx.fill();
         start = end;
       });
@@ -1019,6 +1075,32 @@
       ctx.font = "700 12px sans-serif";
       ctx.textAlign = "center";
       ctx.fillText(currency(total), center, center + 4);
+      tripChartStates[canvas.id] = { slices, total };
+    }
+
+    function initTripPieInteraction(canvas) {
+      if (canvas.dataset.interactive === "true") return;
+      canvas.dataset.interactive = "true";
+
+      canvas.addEventListener("click", (event) => {
+        const state = tripChartStates[canvas.id];
+        if (!state) return;
+        const rect = canvas.getBoundingClientRect();
+        const x = (event.clientX - rect.left) * (canvas.width / rect.width) - canvas.width / 2;
+        const y = (event.clientY - rect.top) * (canvas.height / rect.height) - canvas.height / 2;
+        const distance = Math.sqrt(x * x + y * y);
+        const outer = canvas.width / 2 - 12;
+        const inner = outer - 18;
+        if (distance < inner || distance > outer) return;
+
+        let angle = Math.atan2(y, x);
+        if (angle < -Math.PI / 2) angle += Math.PI * 2;
+        const slice = state.slices.find(({ start, end }) => angle >= start && angle < end);
+        if (!slice) return;
+        const selection = document.getElementById(`${canvas.id}Selection`);
+        selection.textContent = `${slice.category}: ${currency(slice.value)} (${((slice.value / state.total) * 100).toFixed(1)}%)`;
+        selection.style.color = slice.color;
+      });
     }
 
     function toggleTripDetails(button) {
@@ -1028,6 +1110,7 @@
       if (isOpen) {
         const canvas = details.querySelector("canvas");
         drawTripPie(canvas, tripChartData[canvas.id]);
+        initTripPieInteraction(canvas);
       }
     }
 
