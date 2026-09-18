@@ -6,19 +6,19 @@
   <title>Expense Tracker</title>
   <style>
     :root {
-      --bg: #07111f;
-      --bg-2: #0d1b2a;
-      --card: rgba(15, 23, 42, 0.9);
-      --card-soft: rgba(30, 41, 59, 0.9);
-      --panel: #111827;
-      --line: rgba(148, 163, 184, 0.16);
-      --text: #e5eefb;
-      --muted: #9aa8bf;
-      --primary: #4ade80;
-      --primary-strong: #22c55e;
-      --accent: #38bdf8;
-      --danger: #f87171;
-      --shadow: 0 18px 36px rgba(2, 6, 23, 0.45);
+      --bg: #050816;
+      --bg-2: #0a1024;
+      --card: rgba(10, 17, 38, 0.92);
+      --card-soft: rgba(16, 27, 54, 0.92);
+      --panel: #0c1430;
+      --line: rgba(79, 239, 255, 0.2);
+      --text: #eefcff;
+      --muted: #91a9bd;
+      --primary: #a3ff12;
+      --primary-strong: #62f000;
+      --accent: #4fefff;
+      --danger: #ff4fd8;
+      --shadow: 0 18px 36px rgba(0, 0, 0, 0.55), 0 0 28px rgba(79, 239, 255, 0.07);
       --radius: 20px;
     }
 
@@ -31,7 +31,10 @@
 
     body {
       min-height: 100vh;
-      background: linear-gradient(180deg, var(--bg) 0%, var(--bg-2) 100%);
+      background:
+        radial-gradient(circle at 12% 8%, rgba(79, 239, 255, 0.12), transparent 28%),
+        radial-gradient(circle at 88% 24%, rgba(163, 255, 18, 0.08), transparent 24%),
+        linear-gradient(180deg, var(--bg) 0%, var(--bg-2) 100%);
       color: var(--text);
       display: flex;
       justify-content: center;
@@ -50,6 +53,11 @@
       box-shadow: var(--shadow);
       padding: 18px;
       margin-bottom: 18px;
+    }
+
+    .card:hover {
+      border-color: rgba(79, 239, 255, 0.34);
+      box-shadow: var(--shadow), 0 0 22px rgba(79, 239, 255, 0.08);
     }
 
     .header-row {
@@ -71,15 +79,15 @@
     }
 
     .subtle-btn {
-      border: 1px solid rgba(148,163,184,0.06);
-      background: linear-gradient(180deg, rgba(74,222,128,0.08), rgba(56,189,248,0.06));
-      color: var(--primary-strong);
+      border: 1px solid rgba(79, 239, 255, 0.28);
+      background: linear-gradient(180deg, rgba(79, 239, 255, 0.12), rgba(163, 255, 18, 0.07));
+      color: var(--accent);
       font-weight: 700;
       cursor: pointer;
       font-size: 0.82rem;
       padding: 6px 10px;
       border-radius: 10px;
-      box-shadow: 0 6px 14px rgba(2,6,23,0.36);
+      box-shadow: 0 6px 14px rgba(0,0,0,0.36), 0 0 12px rgba(79, 239, 255, 0.12);
       margin-left: 0;
       display: inline-block;
       min-width: 88px;
@@ -155,8 +163,8 @@
     }
 
     input:focus, select:focus {
-      border-color: rgba(74, 222, 128, 0.7);
-      box-shadow: 0 0 0 3px rgba(74, 222, 128, 0.15);
+      border-color: rgba(79, 239, 255, 0.85);
+      box-shadow: 0 0 0 3px rgba(79, 239, 255, 0.15), 0 0 18px rgba(79, 239, 255, 0.14);
     }
 
     button {
@@ -167,6 +175,21 @@
       background: linear-gradient(135deg, var(--primary) 0%, var(--primary-strong) 100%);
       color: #05250d;
       transition: transform 0.15s ease;
+      box-shadow: 0 0 14px rgba(163, 255, 18, 0.18);
+    }
+
+    #addBtn {
+      border: 1px solid rgba(79, 239, 255, 0.7);
+      background: linear-gradient(135deg, #102d46 0%, #123b3b 100%);
+      color: var(--accent);
+      letter-spacing: 0.02em;
+      box-shadow: inset 0 0 16px rgba(79, 239, 255, 0.1), 0 0 18px rgba(79, 239, 255, 0.2);
+    }
+
+    #addBtn:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+      box-shadow: inset 0 0 18px rgba(163, 255, 18, 0.12), 0 0 24px rgba(163, 255, 18, 0.25);
     }
 
     button:active {
@@ -238,6 +261,14 @@
       height: 240px;
       display: block;
       cursor: pointer;
+    }
+
+    #expenseChart {
+      border-radius: 50%;
+      background:
+        radial-gradient(circle at 35% 30%, rgba(79, 239, 255, 0.16), transparent 34%),
+        radial-gradient(circle, rgba(16, 27, 54, 0.96) 0%, rgba(5, 8, 22, 0.98) 72%);
+      box-shadow: 0 0 26px rgba(79, 239, 255, 0.12), inset 0 0 20px rgba(163, 255, 18, 0.06);
     }
 
     .chart-tooltip {
@@ -741,6 +772,10 @@
       <div class="trip-fields" id="tripFields">
         <label for="tripDestination">Trip destination</label>
         <input type="text" id="tripDestination" maxlength="120" placeholder="e.g. Goa" />
+        <label for="tripStart">Trip starts</label>
+        <input type="datetime-local" id="tripStart" />
+        <label for="tripEnd">Trip ends</label>
+        <input type="datetime-local" id="tripEnd" />
         <label for="tripCategory">Trip expense category</label>
         <select id="tripCategory"></select>
       </div>
@@ -855,17 +890,17 @@
     };
 
     const pieChartColors = [
-      "#7c3aed", // purple
-      "#10b981", // emerald
-      "#f97316", // orange
-      "#0ea5e9", // sky
-      "#ef4444", // red
-      "#eab308", // yellow
-      "#db2777", // magenta
-      "#14b8a6", // turquoise
-      "#84cc16", // lime
-      "#6366f1", // indigo
-      "#f43f5e"  // rose
+      "#c44dff", // neon purple
+      "#00ff9d", // neon emerald
+      "#ff7a18", // neon orange
+      "#18dcff", // neon sky
+      "#ff3b5c", // neon red
+      "#ffe600", // neon yellow
+      "#ff2bd6", // neon magenta
+      "#00f5d4", // neon turquoise
+      "#a3ff12", // neon lime
+      "#7067ff", // neon indigo
+      "#ff4f81"  // neon rose
     ];
 
     const tripPieColors = [
@@ -1496,6 +1531,8 @@
         amountEl.value = "";
         document.getElementById("expenseNotes").value = "";
         tripDestination.value = "";
+        document.getElementById("tripStart").value = "";
+        document.getElementById("tripEnd").value = "";
         categorySelect.value = "Food";
         tripFields.classList.remove("visible");
 
