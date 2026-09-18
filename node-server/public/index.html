@@ -327,6 +327,7 @@
     }
 
     .trip-destination span {
+      flex: 1 1 auto;
       min-width: 0;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -334,8 +335,16 @@
       font-weight: 800;
     }
 
+    .trip-destination em {
+      color: var(--muted);
+      font-style: normal;
+      font-weight: 600;
+    }
+
     .trip-destination strong {
       flex: 0 0 auto;
+      margin-left: auto;
+      text-align: right;
       color: var(--primary);
       white-space: nowrap;
     }
@@ -893,6 +902,57 @@
       return `₹${Number(value || 0).toLocaleString("en-IN")}`;
     }
 
+    function parseTripDateTime(value) {
+      const text = String(value || "").trim();
+      const dayFirst = /^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?$/.exec(text);
+      if (dayFirst) {
+        return new Date(
+          Number(dayFirst[3]),
+          Number(dayFirst[2]) - 1,
+          Number(dayFirst[1]),
+          Number(dayFirst[4] || 0),
+          Number(dayFirst[5] || 0),
+          Number(dayFirst[6] || 0),
+        );
+      }
+
+      const isoLike = /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2})(?::(\d{2}))?)?$/.exec(text);
+      if (isoLike) {
+        return new Date(
+          Number(isoLike[1]),
+          Number(isoLike[2]) - 1,
+          Number(isoLike[3]),
+          Number(isoLike[4] || 0),
+          Number(isoLike[5] || 0),
+          Number(isoLike[6] || 0),
+        );
+      }
+
+      return new Date(text);
+    }
+
+    function formatTripDateTime(value) {
+      if (!value) return "";
+      const date = parseTripDateTime(value);
+      if (Number.isNaN(date.getTime())) return value;
+      return new Intl.DateTimeFormat("en-IN", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+      }).format(date);
+    }
+
+    function formatTripDuration(start, end) {
+      if (!start || !end) return "";
+      const startDate = parseTripDateTime(start);
+      const endDate = parseTripDateTime(end);
+      if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime()) || endDate < startDate) return "";
+      const days = Math.round(((endDate - startDate) / 86400000) * 2) / 2;
+      return `[${days} ${days === 1 ? "day" : "days"}]`;
+    }
+
     function getTodayLocalDate() {
       const now = new Date();
       const tzOffsetMs = now.getTimezoneOffset() * 60 * 1000;
@@ -982,9 +1042,11 @@
 
       (data.trips || []).forEach((tripDay) => {
         Object.entries(tripDay.destinations || {}).forEach(([destination, trip]) => {
-          destinations[destination] ||= { total: 0, categories: {}, dates: new Set(), entries: [] };
+          destinations[destination] ||= { total: 0, categories: {}, dates: new Set(), entries: [], tripStart: "", tripEnd: "" };
           destinations[destination].total += Number(trip.total || 0);
           destinations[destination].dates.add(tripDay.date);
+          if (trip.tripStart) destinations[destination].tripStart = trip.tripStart;
+          if (trip.tripEnd) destinations[destination].tripEnd = trip.tripEnd;
           destinations[destination].entries.push(...(trip.entries || [{
             date: tripDay.date,
             categories: trip.categories || {},
@@ -1004,14 +1066,18 @@
         return;
       }
 
-      container.innerHTML = `<div class="trip-breakdown-heading"><strong>Trips by destination</strong><span>Open a trip for its category breakdown</span></div>${entries.map(([destination, trip], index) => {
+      container.innerHTML = `<div class="trip-breakdown-heading"><strong>Trips by destination</strong></div>${entries.map(([destination, trip], index) => {
         const chartId = `tripChart${index}`;
         tripChartData[chartId] = trip.categories;
         const categoryRows = Object.entries(trip.categories)
           .sort(([, a], [, b]) => b - a)
           .map(([category, value], categoryIndex) => `<div class="category-top trip-category-row"><span class="trip-color-swatch" style="background: ${tripPieColors[categoryIndex % tripPieColors.length]};"></span><span>${category}</span><strong>${currency(value)}</strong></div>`)
           .join("");
-        const dates = [...trip.dates].sort().join(", ");
+        const expenseDates = [...trip.dates].sort().join(", ");
+        const tripDates = trip.tripStart || trip.tripEnd
+          ? `${formatTripDateTime(trip.tripStart) || "?"} to ${formatTripDateTime(trip.tripEnd) || "?"}`
+          : "Not added yet";
+        const duration = formatTripDuration(trip.tripStart, trip.tripEnd);
         const expenseRows = trip.entries
           .sort((a, b) => String(a.date).localeCompare(String(b.date)))
           .flatMap((entry) => Object.entries(entry.categories || {})
@@ -1026,10 +1092,11 @@
           .join("");
         return `
           <button class="trip-destination" type="button" onclick="toggleTripDetails(this)">
-            <span>${destination}</span><strong>${currency(trip.total)}</strong>
+            <span>${destination}${duration ? ` <em>${duration}</em>` : ""}</span><strong>${currency(trip.total)}</strong>
           </button>
           <div class="trip-details">
-            <div class="trip-dates"><span>Dates</span><span>${dates}</span></div>
+            <div class="trip-dates"><span>Trip dates</span><span>${tripDates}</span></div>
+            <div class="trip-dates"><span>Expense dates</span><span>${expenseDates}</span></div>
             <div class="trip-chart-hint">Trip spending by category</div>
             <div class="trip-detail-summary">
               <div>
@@ -1371,6 +1438,8 @@
       const amountEl = document.getElementById("amount");
       const amount = amountEl.value;
       const selectedDate = document.getElementById("expenseDate").value;
+      const tripStart = document.getElementById("tripStart").value;
+      const tripEnd = document.getElementById("tripEnd").value;
       const category = document.getElementById("category").value;
       const notes = document.getElementById("expenseNotes").value.trim();
       const msg = document.getElementById("msg");
@@ -1394,6 +1463,14 @@
         msg.innerText = "Please enter a trip destination.";
         return;
       }
+      if (isTrip && (!tripStart || !tripEnd)) {
+        msg.innerText = "Please select the trip start and end dates.";
+        return;
+      }
+      if (isTrip && tripEnd < tripStart) {
+        msg.innerText = "Trip end date must be on or after the start date.";
+        return;
+      }
 
       try {
         addBtn.disabled = true;
@@ -1407,6 +1484,8 @@
             date: selectedDate,
             category: isTrip ? tripCategory.value : category,
             destination: isTrip ? tripDestination.value.trim() : undefined,
+            tripStart: isTrip ? tripStart : undefined,
+            tripEnd: isTrip ? tripEnd : undefined,
             notes,
           })
         });

@@ -36,12 +36,15 @@ export const TRIP_CATEGORIES = [
   "Medical",
   "Other",
 ];
-const TRIPS_HEADER_ROW = ["Date", "Destination", ...TRIP_CATEGORIES, "Total", NOTES_HEADER, "Photo"];
+const TRIPS_HEADER_ROW = ["Date", "Destination", "Trip Start", "Trip End", ...TRIP_CATEGORIES, "Total", NOTES_HEADER, "Photo"];
+const LEGACY_CURRENT_TRIPS_HEADER_ROW = ["Date", "Destination", ...TRIP_CATEGORIES, "Total", NOTES_HEADER, "Photo"];
 const PREVIOUS_TRIPS_HEADER_ROW = [
   "Date", "Destination", "Food", "Stay", "Travel", "Shopping", "Utilities", "Rent",
   "Entertainment", "Subscription", "Home", "Medical", "Other", "Total", NOTES_HEADER,
 ];
-const TRIPS_TOTAL_INDEX = 2 + TRIP_CATEGORIES.length;
+const TRIPS_START_INDEX = 2;
+const TRIPS_END_INDEX = 3;
+const TRIPS_TOTAL_INDEX = 4 + TRIP_CATEGORIES.length;
 const TRIPS_NOTES_INDEX = TRIPS_TOTAL_INDEX + 1;
 const TRIPS_PHOTO_INDEX = TRIPS_TOTAL_INDEX + 2;
 let tripsPreparation = null;
@@ -127,56 +130,11 @@ function normalizeTripSheetDate(value) {
 
 async function ensureTripsSheet(sheets) {
   const spreadsheet = await sheets.spreadsheets.get({ spreadsheetId: SPREADSHEET_ID });
-  let tripSheet = spreadsheet.data.sheets?.find(
+  const tripSheet = spreadsheet.data.sheets?.find(
     (sheet) => sheet.properties?.title === TRIPS_SHEET_NAME,
   );
 
-  if (!tripSheet) {
-    const response = await sheets.spreadsheets.batchUpdate({
-      spreadsheetId: SPREADSHEET_ID,
-      requestBody: {
-        requests: [{
-          addSheet: {
-            properties: {
-              title: TRIPS_SHEET_NAME,
-              gridProperties: { rowCount: 1000, columnCount: TRIPS_HEADER_ROW.length },
-            },
-          },
-        }],
-      },
-    });
-    tripSheet = response.data.replies?.[0]?.addSheet;
-  } else if ((tripSheet.properties?.gridProperties?.columnCount || 0) < TRIPS_HEADER_ROW.length) {
-    await sheets.spreadsheets.batchUpdate({
-      spreadsheetId: SPREADSHEET_ID,
-      requestBody: {
-        requests: [{
-          updateSheetProperties: {
-            properties: {
-              sheetId: tripSheet.properties.sheetId,
-              gridProperties: { columnCount: TRIPS_HEADER_ROW.length },
-            },
-            fields: "gridProperties.columnCount",
-          },
-        }],
-      },
-    });
-  }
-
-  const headerResponse = await sheets.spreadsheets.values.get({
-    spreadsheetId: SPREADSHEET_ID,
-    range: `${TRIPS_SHEET_NAME}!A1:${getColumnLetter(TRIPS_HEADER_ROW.length)}`,
-  });
-  const existingHeader = headerResponse.data.values?.[0] || [];
-  if (!existingHeader.length || (existingHeader.join("\u0000") === TRIPS_HEADER_ROW.slice(0, -1).join("\u0000"))) {
-    await sheets.spreadsheets.values.update({
-      spreadsheetId: SPREADSHEET_ID,
-      range: `${TRIPS_SHEET_NAME}!A1:${getColumnLetter(TRIPS_HEADER_ROW.length)}`,
-      valueInputOption: "USER_ENTERED",
-      requestBody: { values: [TRIPS_HEADER_ROW] },
-    });
-  }
-
+  if (!tripSheet) throw new Error(`Missing ${TRIPS_SHEET_NAME} sheet`);
   return tripSheet;
 }
 
@@ -188,7 +146,19 @@ async function getTripRows(sheets) {
   return response.data.values || [];
 }
 
+async function getExistingTripRows(sheets) {
+  const spreadsheet = await sheets.spreadsheets.get({ spreadsheetId: SPREADSHEET_ID });
+  const tripSheetExists = spreadsheet.data.sheets?.some(
+    (sheet) => sheet.properties?.title === TRIPS_SHEET_NAME,
+  );
+
+  if (!tripSheetExists) return [];
+  return getTripRows(sheets);
+}
+
 async function migrateLegacyTrips(sheets) {
+  throw new Error("Legacy trip migration is disabled");
+  /*
   await ensureTripsSheet(sheets);
   const existingResponse = await sheets.spreadsheets.values.get({
     spreadsheetId: SPREADSHEET_ID,
@@ -197,11 +167,12 @@ async function migrateLegacyTrips(sheets) {
   const existingValues = existingResponse.data.values || [];
   const existingHeader = existingValues[0] || [];
   const isCurrentFormat = JSON.stringify(existingHeader) === JSON.stringify(TRIPS_HEADER_ROW);
+  const isLegacyCurrentFormat = JSON.stringify(existingHeader) === JSON.stringify(LEGACY_CURRENT_TRIPS_HEADER_ROW);
   const isPreviousFormat = JSON.stringify(existingHeader) === JSON.stringify(PREVIOUS_TRIPS_HEADER_ROW);
   const groupedRows = new Map();
   let legacyImported = false;
 
-  const addToGroup = (destination, date, category, amount, notes = "") => {
+  const addToGroup = (destination, date, category, amount, notes = "", tripStart = "", tripEnd = "", photo = "") => {
     const cleanDate = normalizeTripSheetDate(date) || String(date || "").trim() || "undated";
     const cleanDestination = String(destination || "Unassigned").trim() || "Unassigned";
     const numericAmount = Number(amount || 0) || 0;
@@ -213,19 +184,28 @@ async function migrateLegacyTrips(sheets) {
         date: cleanDate,
         categories: Object.fromEntries(TRIP_CATEGORIES.map((name) => [name, 0])),
         notes: [],
+        tripStart,
+        tripEnd,
+        photo,
       });
     }
     const group = groupedRows.get(key);
     group.categories[category] += numericAmount;
     if (notes && !group.notes.includes(notes)) group.notes.push(notes);
+    if (tripStart) group.tripStart = tripStart;
+    if (tripEnd) group.tripEnd = tripEnd;
+    if (photo) group.photo = photo;
   };
 
   for (const row of existingValues.slice(1)) {
-    if (isCurrentFormat || isPreviousFormat) {
+    if (isCurrentFormat || isLegacyCurrentFormat || isPreviousFormat) {
       const notes = String(row[existingHeader.indexOf(NOTES_HEADER)] || "");
+      const tripStart = isCurrentFormat ? String(row[existingHeader.indexOf("Trip Start")] || "") : "";
+      const tripEnd = isCurrentFormat ? String(row[existingHeader.indexOf("Trip End")] || "") : "";
+      const photo = isCurrentFormat ? String(row[existingHeader.indexOf("Photo")] || "") : "";
       TRIP_CATEGORIES.forEach((category) => {
         const sourceIndex = existingHeader.indexOf(category);
-        if (sourceIndex >= 0) addToGroup(row[1], row[0], category, row[sourceIndex], notes);
+        if (sourceIndex >= 0) addToGroup(row[1], row[0], category, row[sourceIndex], notes, tripStart, tripEnd, photo);
       });
     } else {
       const isSimpleLegacyFormat = existingHeader[0] === "Date" && existingHeader[1] === "Destination";
@@ -281,12 +261,14 @@ async function migrateLegacyTrips(sheets) {
   }
 
   const outputRows = [...groupedRows.values()].map((group) => [
-    group.destination,
     group.date,
+    group.destination,
+    group.tripStart || "",
+    group.tripEnd || "",
     ...TRIP_CATEGORIES.map((category) => group.categories[category] || 0),
     TRIP_CATEGORIES.reduce((sum, category) => sum + (group.categories[category] || 0), 0),
     group.notes.join(" | "),
-    "",
+    group.photo || "",
   ]);
   const needsRewrite = !isCurrentFormat || legacyImported || outputRows.length !== existingValues.slice(1).length;
 
@@ -302,6 +284,7 @@ async function migrateLegacyTrips(sheets) {
       requestBody: { values: [TRIPS_HEADER_ROW, ...outputRows] },
     });
   }
+  */
 }
 
 async function prepareTrips(sheets) {
@@ -325,18 +308,22 @@ function getTripSummary(rows, month) {
   for (const row of monthRows) {
     const date = normalizeTripSheetDate(row[0]) || "undated";
     const destination = row[1] || "Unassigned";
+    const tripStart = row[TRIPS_START_INDEX] || "";
+    const tripEnd = row[TRIPS_END_INDEX] || "";
     const notes = row[TRIPS_NOTES_INDEX] || "";
     const photo = row[TRIPS_PHOTO_INDEX] || "";
     const categories = Object.fromEntries(TRIP_CATEGORIES.map((category, index) => [
       category,
-      Number(row[index + 2] || 0) || 0,
+      Number(row[index + 4] || 0) || 0,
     ]));
     const numericAmount = Object.values(categories).reduce((sum, amount) => sum + amount, 0);
     if (!String(row[1] || "").trim()) continue;
     byDate[date] ||= { total: 0, destinations: {} };
     byDate[date].total += numericAmount;
-    byDate[date].destinations[destination] ||= { total: 0, categories: {}, entries: [], photo: "" };
+    byDate[date].destinations[destination] ||= { total: 0, categories: {}, entries: [], photo: "", tripStart, tripEnd };
     const destinationData = byDate[date].destinations[destination];
+    if (tripStart) destinationData.tripStart = tripStart;
+    if (tripEnd) destinationData.tripEnd = tripEnd;
     if (photo) destinationData.photo = photo;
     destinationData.total += numericAmount;
     Object.entries(categories).forEach(([category, amount]) => {
@@ -348,15 +335,22 @@ function getTripSummary(rows, month) {
   return byDate;
 }
 
-export async function addTripExpense({ amount, dateStr, date: requestDate, destination, category, notes = "", photoPath = "" }) {
+export async function addTripExpense({ amount, dateStr, date: requestDate, destination, category, notes = "", photoPath = "", tripStart = "", tripEnd = "" }) {
   const sheets = await getSheetsClient();
   const tripDateValue = dateStr || requestDate;
   const date = parseLocalDate(tripDateValue);
   const cleanDestination = String(destination || "").trim().slice(0, 120);
   const cleanNotes = String(notes || "").trim().slice(0, 500);
+  const cleanTripStart = String(tripStart || "").trim();
+  const cleanTripEnd = String(tripEnd || "").trim();
 
   if (!cleanDestination) throw new Error("Destination required");
   if (!TRIP_CATEGORIES.includes(category)) throw new Error("Invalid trip category");
+  if (cleanTripStart) parseLocalDate(cleanTripStart);
+  if (cleanTripEnd) parseLocalDate(cleanTripEnd);
+  if (cleanTripStart && cleanTripEnd && parseLocalDate(cleanTripEnd) < parseLocalDate(cleanTripStart)) {
+    throw new Error("Trip end date must be on or after the start date");
+  }
 
   await ensureTripsSheet(sheets);
   const rows = await getTripRows(sheets);
@@ -364,12 +358,14 @@ export async function addTripExpense({ amount, dateStr, date: requestDate, desti
   const rowIndex = rows.findIndex((row) => normalizeTripSheetDate(row[0]) === tripDate && row[1] === cleanDestination);
   const outputRow = rowIndex >= 0
     ? [...rows[rowIndex], ...Array(Math.max(0, TRIPS_HEADER_ROW.length - rows[rowIndex].length)).fill(0)]
-    : [tripDate, cleanDestination, ...TRIP_CATEGORIES.map(() => 0), 0, "", ""];
+    : [tripDate, cleanDestination, cleanTripStart, cleanTripEnd, ...TRIP_CATEGORIES.map(() => 0), 0, "", ""];
   outputRow[0] = tripDate;
   outputRow[1] = cleanDestination;
-  const categoryIndex = TRIP_CATEGORIES.indexOf(category) + 2;
+  if (cleanTripStart) outputRow[TRIPS_START_INDEX] = cleanTripStart;
+  if (cleanTripEnd) outputRow[TRIPS_END_INDEX] = cleanTripEnd;
+  const categoryIndex = TRIP_CATEGORIES.indexOf(category) + 4;
   outputRow[categoryIndex] = (Number(outputRow[categoryIndex] || 0) || 0) + Number(amount);
-  outputRow[TRIPS_TOTAL_INDEX] = TRIP_CATEGORIES.reduce((sum, name, index) => sum + (Number(outputRow[index + 2] || 0) || 0), 0);
+  outputRow[TRIPS_TOTAL_INDEX] = TRIP_CATEGORIES.reduce((sum, name, index) => sum + (Number(outputRow[index + 4] || 0) || 0), 0);
   outputRow[TRIPS_NOTES_INDEX] = [outputRow[TRIPS_NOTES_INDEX], cleanNotes].filter(Boolean).join(" | ");
   if (photoPath) outputRow[TRIPS_PHOTO_INDEX] = photoPath;
 
@@ -638,7 +634,7 @@ export async function getMonthlyExpenses(monthParam) {
 
   const sheetName = `${month}/${year}`;
 
-  const tripRows = await getTripRows(sheets);
+    const tripRows = await getExistingTripRows(sheets);
   const tripSummary = getTripSummary(tripRows, `${year}-${String(requestedMonth.getMonth() + 1).padStart(2, "0")}`);
   const rows = await ensureSheetStructure(sheets, sheetName, year, requestedMonth.getMonth());
 
