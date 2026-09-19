@@ -6,19 +6,19 @@
   <title>Expense Tracker</title>
   <style>
     :root {
-      --bg: #050816;
-      --bg-2: #0a1024;
-      --card: rgba(10, 17, 38, 0.92);
-      --card-soft: rgba(16, 27, 54, 0.92);
-      --panel: #0c1430;
-      --line: rgba(79, 239, 255, 0.2);
-      --text: #eefcff;
-      --muted: #91a9bd;
-      --primary: #a3ff12;
-      --primary-strong: #62f000;
-      --accent: #4fefff;
-      --danger: #ff4fd8;
-      --shadow: 0 18px 36px rgba(0, 0, 0, 0.55), 0 0 28px rgba(79, 239, 255, 0.07);
+      --bg: #050817;
+      --bg-2: #0d1230;
+      --card: rgba(10, 16, 39, 0.9);
+      --card-soft: rgba(24, 27, 67, 0.78);
+      --panel: #111742;
+      --line: rgba(123, 151, 255, 0.24);
+      --text: #f3f4ff;
+      --muted: #a6afd0;
+      --primary: #b8f06a;
+      --primary-strong: #63d9b0;
+      --accent: #91a7ff;
+      --danger: #ff7caa;
+      --shadow: 0 20px 44px rgba(1, 3, 18, 0.62), 0 0 32px rgba(107, 121, 255, 0.1);
       --radius: 20px;
     }
 
@@ -32,9 +32,9 @@
     body {
       min-height: 100vh;
       background:
-        radial-gradient(circle at 12% 8%, rgba(79, 239, 255, 0.12), transparent 28%),
-        radial-gradient(circle at 88% 24%, rgba(163, 255, 18, 0.08), transparent 24%),
-        linear-gradient(180deg, var(--bg) 0%, var(--bg-2) 100%);
+        radial-gradient(circle at 8% 0%, rgba(95, 119, 255, 0.2), transparent 30%),
+        radial-gradient(circle at 92% 18%, rgba(179, 92, 255, 0.13), transparent 26%),
+        linear-gradient(135deg, #050817 0%, #0b1030 48%, #17143f 100%);
       color: var(--text);
       display: flex;
       justify-content: center;
@@ -47,7 +47,7 @@
     }
 
     .card {
-      background: var(--card);
+      background: linear-gradient(145deg, rgba(22, 25, 67, 0.92), rgba(8, 13, 35, 0.94));
       border: 1px solid var(--line);
       border-radius: var(--radius);
       box-shadow: var(--shadow);
@@ -56,8 +56,8 @@
     }
 
     .card:hover {
-      border-color: rgba(79, 239, 255, 0.34);
-      box-shadow: var(--shadow), 0 0 22px rgba(79, 239, 255, 0.08);
+      border-color: rgba(98, 223, 255, 0.48);
+      box-shadow: var(--shadow), 0 0 24px rgba(98, 223, 255, 0.12);
     }
 
     .header-row {
@@ -79,15 +79,15 @@
     }
 
     .subtle-btn {
-      border: 1px solid rgba(79, 239, 255, 0.28);
-      background: linear-gradient(180deg, rgba(79, 239, 255, 0.12), rgba(163, 255, 18, 0.07));
+      border: 1px solid rgba(98, 223, 255, 0.36);
+      background: linear-gradient(135deg, rgba(115, 132, 255, 0.2), rgba(178, 95, 255, 0.12));
       color: var(--accent);
       font-weight: 700;
       cursor: pointer;
       font-size: 0.82rem;
       padding: 6px 10px;
       border-radius: 10px;
-      box-shadow: 0 6px 14px rgba(0,0,0,0.36), 0 0 12px rgba(79, 239, 255, 0.12);
+      box-shadow: 0 8px 16px rgba(1, 9, 27, 0.32), 0 0 14px rgba(98, 223, 255, 0.14);
       margin-left: 0;
       display: inline-block;
       min-width: 88px;
@@ -107,7 +107,7 @@
     }
 
     .metric {
-      background: var(--card-soft);
+      background: linear-gradient(145deg, rgba(39, 40, 91, 0.76), rgba(14, 18, 50, 0.82));
       border: 1px solid var(--line);
       border-radius: 14px;
       padding: 10px 8px;
@@ -131,7 +131,7 @@
     .total {
       font-size: 2rem;
       font-weight: 800;
-      color: var(--primary);
+      color: var(--accent);
       letter-spacing: -0.04em;
       margin: 4px 0 6px 0;
     }
@@ -154,7 +154,7 @@
     input, select, button {
       width: 100%;
       border: 1px solid var(--line);
-      background: rgba(17, 24, 39, 0.9);
+      background: linear-gradient(135deg, rgba(29, 31, 78, 0.98), rgba(9, 13, 38, 0.98));
       color: var(--text);
       border-radius: 12px;
       padding: 13px 14px;
@@ -173,23 +173,25 @@
       font-weight: 700;
       border: none;
       background: linear-gradient(135deg, var(--primary) 0%, var(--primary-strong) 100%);
-      color: #05250d;
+      color: #09233a;
       transition: transform 0.15s ease;
       box-shadow: 0 0 14px rgba(163, 255, 18, 0.18);
     }
 
     #addBtn {
-      border: 1px solid rgba(79, 239, 255, 0.7);
-      background: linear-gradient(135deg, #102d46 0%, #123b3b 100%);
-      color: var(--accent);
+      border: 1px solid rgba(145, 167, 255, 0.72);
+      background: linear-gradient(115deg, #20245c 0%, #38256d 52%, #54277b 100%);
+      color: #f3f4ff;
       letter-spacing: 0.02em;
-      box-shadow: inset 0 0 16px rgba(79, 239, 255, 0.1), 0 0 18px rgba(79, 239, 255, 0.2);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 8px 20px rgba(12, 8, 39, 0.42), 0 0 18px rgba(145, 167, 255, 0.16);
+      transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
     }
 
     #addBtn:hover {
-      border-color: var(--primary);
-      color: var(--primary);
-      box-shadow: inset 0 0 18px rgba(163, 255, 18, 0.12), 0 0 24px rgba(163, 255, 18, 0.25);
+      border-color: #c6d0ff;
+      color: #ffffff;
+      background: linear-gradient(115deg, #2d337c 0%, #51378d 52%, #713995 100%);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 10px 24px rgba(12, 8, 39, 0.5), 0 0 26px rgba(145, 167, 255, 0.3);
     }
 
     button:active {
@@ -216,7 +218,7 @@
       align-items: center;
       justify-content: center;
       padding: 14px;
-      background: linear-gradient(180deg, rgba(15,23,42,0.75), rgba(7,16,28,0.6));
+      background: linear-gradient(145deg, rgba(27, 29, 76, 0.8), rgba(8, 13, 37, 0.84));
       border: 1px solid var(--line);
       border-radius: 16px;
       position: relative;
@@ -265,10 +267,8 @@
 
     #expenseChart {
       border-radius: 50%;
-      background:
-        radial-gradient(circle at 35% 30%, rgba(79, 239, 255, 0.16), transparent 34%),
-        radial-gradient(circle, rgba(16, 27, 54, 0.96) 0%, rgba(5, 8, 22, 0.98) 72%);
-      box-shadow: 0 0 26px rgba(79, 239, 255, 0.12), inset 0 0 20px rgba(163, 255, 18, 0.06);
+      background: transparent;
+      box-shadow: none;
     }
 
     .chart-tooltip {
@@ -300,7 +300,7 @@
       flex-direction: column;
       gap: 6px;
       padding: 8px 10px;
-      background: rgba(15, 23, 42, 0.75);
+      background: linear-gradient(135deg, rgba(37, 38, 91, 0.74), rgba(12, 15, 44, 0.8));
       border: 1px solid var(--line);
       border-radius: 12px;
     }
@@ -319,7 +319,7 @@
       gap: 8px;
       margin-top: 12px;
       padding: 10px;
-      background: rgba(7, 17, 31, 0.32);
+      background: linear-gradient(145deg, rgba(20, 20, 58, 0.76), rgba(7, 10, 31, 0.72));
       border: 1px solid var(--line);
       border-radius: 14px;
     }
@@ -351,7 +351,7 @@
       margin: 0;
       padding: 11px 12px;
       text-align: left;
-      background: rgba(30, 41, 59, 0.85);
+      background: linear-gradient(135deg, rgba(47, 45, 105, 0.84), rgba(17, 18, 57, 0.9));
       color: var(--text);
       border: 1px solid var(--line);
       font-size: 0.8rem;
@@ -482,7 +482,7 @@
       grid-template-columns: 1fr auto;
       gap: 4px 8px;
       padding: 9px 10px;
-      background: rgba(15, 23, 42, 0.72);
+      background: linear-gradient(135deg, rgba(34, 35, 84, 0.74), rgba(11, 13, 40, 0.82));
       border: 1px solid var(--line);
       border-radius: 8px;
       font-size: 0.74rem;
@@ -536,7 +536,7 @@
       justify-content: space-between;
       align-items: center;
       gap: 10px;
-      background: rgba(15, 23, 42, 0.73);
+      background: linear-gradient(135deg, rgba(35, 37, 88, 0.76), rgba(10, 13, 41, 0.82));
       border: 1px solid var(--line);
       border-radius: 12px;
       padding: 10px 12px;
@@ -680,7 +680,7 @@
     }
 
     .chart-panel {
-      background: rgba(15, 23, 42, 0.72);
+      background: linear-gradient(145deg, rgba(35, 36, 88, 0.78), rgba(10, 13, 41, 0.84));
       border: 1px solid var(--line);
       border-radius: 14px;
       padding: 10px;
@@ -903,10 +903,19 @@
       "#ff4f81"  // neon rose
     ];
 
-    const tripPieColors = [
-      "#f97316", "#06b6d4", "#eab308", "#f43f5e", "#84cc16",
-      "#a855f7", "#14b8a6", "#fb7185", "#38bdf8", "#f59e0b", "#22c55e"
-    ];
+    const tripCategoryColors = {
+      Stay: "#f97316",
+      Other: "#06b6d4",
+      Food: "#eab308",
+      Travel: "#f43f5e",
+      "Booking/Tickets": "#84cc16",
+      Shopping: "#a855f7",
+      Utilities: "#14b8a6",
+      Commute: "#38bdf8",
+      Rent: "#f59e0b",
+      Entertainment: "#22c55e",
+      Subscription: "#fb7185",
+    };
 
     const categorySelect = document.getElementById("category");
     categorySelect.innerHTML = categories
@@ -1105,26 +1114,15 @@
         const chartId = `tripChart${index}`;
         tripChartData[chartId] = trip.categories;
         const categoryRows = Object.entries(trip.categories)
-          .sort(([, a], [, b]) => b - a)
-          .map(([category, value], categoryIndex) => `<div class="category-top trip-category-row"><span class="trip-color-swatch" style="background: ${tripPieColors[categoryIndex % tripPieColors.length]};"></span><span>${category}</span><strong>${currency(value)}</strong></div>`)
+          .filter(([, value]) => Number(value) > 0)
+          .sort(([, a], [, b]) => Number(b) - Number(a))
+          .map(([category, value]) => `<div class="category-top trip-category-row"><span class="trip-color-swatch" style="background: ${tripCategoryColors[category] || categoryColors[category] || "#94a3b8"};"></span><span>${category}</span><strong>${currency(value)}</strong></div>`)
           .join("");
         const expenseDates = [...trip.dates].sort().join(", ");
         const tripDates = trip.tripStart || trip.tripEnd
           ? `${formatTripDateTime(trip.tripStart) || "?"} to ${formatTripDateTime(trip.tripEnd) || "?"}`
           : "Not added yet";
         const duration = formatTripDuration(trip.tripStart, trip.tripEnd);
-        const expenseRows = trip.entries
-          .sort((a, b) => String(a.date).localeCompare(String(b.date)))
-          .flatMap((entry) => Object.entries(entry.categories || {})
-            .filter(([, value]) => Number(value) > 0)
-            .map(([category, value]) => `
-              <div class="trip-entry">
-                <span>${entry.date} · ${category}</span>
-                <strong>${currency(value)}</strong>
-                ${entry.notes ? `<span class="trip-entry-note">${entry.notes}</span>` : ""}
-              </div>
-            `))
-          .join("");
         return `
           <button class="trip-destination" type="button" onclick="toggleTripDetails(this)">
             <span>${destination}${duration ? ` <em>${duration}</em>` : ""}</span><strong>${currency(trip.total)}</strong>
@@ -1140,7 +1138,6 @@
               </div>
               <div class="trip-category-totals">${categoryRows}</div>
             </div>
-            <div class="trip-entry-list">${expenseRows}</div>
           </div>
         `;
       }).join("")}`;
@@ -1148,7 +1145,9 @@
 
     function drawTripPie(canvas, categoryTotals) {
       const ctx = canvas.getContext("2d");
-      const entries = Object.entries(categoryTotals).filter(([, value]) => Number(value) > 0);
+      const entries = Object.entries(categoryTotals)
+        .filter(([, value]) => Number(value) > 0)
+        .sort(([, a], [, b]) => Number(b) - Number(a));
       const total = entries.reduce((sum, [, value]) => sum + Number(value), 0);
       const center = canvas.width / 2;
       const outer = canvas.width / 2 - 12;
@@ -1159,12 +1158,13 @@
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       entries.forEach(([category, value], index) => {
         const end = start + (Number(value) / total) * Math.PI * 2;
-        slices.push({ start, end, category, value: Number(value), color: tripPieColors[index % tripPieColors.length] });
+        const color = tripCategoryColors[category] || categoryColors[category] || "#94a3b8";
+        slices.push({ start, end, category, value: Number(value), color });
         ctx.beginPath();
         ctx.moveTo(center, center);
         ctx.arc(center, center, outer, start, end);
         ctx.closePath();
-        ctx.fillStyle = tripPieColors[index % tripPieColors.length];
+        ctx.fillStyle = color;
         ctx.fill();
         start = end;
       });
@@ -1272,7 +1272,7 @@
       const ringThickness = 18; // match empty-state stroke thickness
       const inner = Math.max(outer - ringThickness, 4);
 
-      const hoverGrow = 8;
+      const hoverGrow = 3;
       chartSlices.forEach((s, i) => {
         let r = outer + (i === hoveredIndex ? hoverGrow : 0);
 
